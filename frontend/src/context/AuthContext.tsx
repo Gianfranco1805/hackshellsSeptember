@@ -9,6 +9,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string) => Promise<{ error: string | null }>
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
+  updateDisplayName: (displayName: string) => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -45,8 +46,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.auth.signOut()
   }
 
+  async function updateDisplayName(displayName: string) {
+    const { data, error } = await api.auth.updateProfile(displayName)
+    if (data.user) {
+      setSession((prev) => (prev ? { ...prev, user: data.user! } : prev))
+    }
+    return { error: error?.message ?? null }
+  }
+
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ session, user: session?.user ?? null, loading, signUp, signIn, signOut, updateDisplayName }}
+    >
       {children}
     </AuthContext.Provider>
   )

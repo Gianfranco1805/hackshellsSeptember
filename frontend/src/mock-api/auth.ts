@@ -33,7 +33,12 @@ function persistMockSession(session: AppSession | null) {
 const mockListeners = new Set<(event: string, session: AppSession | null) => void>()
 
 function mapUser(user: SupabaseUser): AppUser {
-  return { id: user.id, email: user.email ?? '', created_at: user.created_at }
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    display_name: user.user_metadata?.display_name ?? null,
+    created_at: user.created_at,
+  }
 }
 
 function mapSession(session: SupabaseSession | null): AppSession | null {
@@ -108,6 +113,14 @@ export async function signInWithPassword(email: string, password: string): Promi
   persistMockSession(session)
   mockListeners.forEach((cb) => cb('SIGNED_IN', session))
   return { data: { user: publicUser, session }, error: null }
+}
+
+export async function updateProfile(displayName: string): Promise<AuthResult> {
+  const { data, error } = await supabase.auth.updateUser({ data: { display_name: displayName } })
+  return {
+    data: { user: data.user ? mapUser(data.user) : null, session: null },
+    error: error ? { message: error.message } : null,
+  }
 }
 
 export async function signOut(): Promise<{ error: { message: string } | null }> {

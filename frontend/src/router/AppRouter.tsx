@@ -5,6 +5,7 @@ import { ActiveWalkPage } from '../pages/ActiveWalkPage'
 import { ContactViewPage } from '../pages/ContactViewPage'
 import { ContactsPage } from '../pages/ContactsPage'
 import { LoginPage } from '../pages/LoginPage'
+import { SettingsPage } from '../pages/SettingsPage'
 import { SignUpPage } from '../pages/SignUpPage'
 import { StartWalkPage } from '../pages/StartWalkPage'
 
@@ -30,6 +31,16 @@ export function AppRouter() {
           <ProtectedRoute>
             <AppLayout>
               <ContactsPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <SettingsPage />
             </AppLayout>
           </ProtectedRoute>
         }
