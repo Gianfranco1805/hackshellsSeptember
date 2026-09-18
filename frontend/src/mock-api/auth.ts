@@ -1,94 +1,62 @@
-// Mock auth, deliberately shaped like supabase-js v2's real auth API
-// (same method names/return shapes) so AuthContext swaps to `supabase.auth.*`
-// later with no changes outside this file.
+// Real Supabase Auth, kept behind the same function signatures/shapes the
+// mock version used (which were deliberately modeled on supabase-js v2's own
+// API) so AuthContext.tsx needed zero changes for this swap.
 
-import { delay, generateId, store, STORAGE_KEYS } from './client'
+import type { Session as SupabaseSession, User as SupabaseUser } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabaseClient'
 import type { AppSession, AppUser } from '../types'
-
-interface StoredUser extends AppUser {
-  password: string
-}
 
 export interface AuthResult {
   data: { user: AppUser | null; session: AppSession | null }
   error: { message: string } | null
 }
 
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 // 24h
+function mapUser(user: SupabaseUser): AppUser {
+  return { id: user.id, email: user.email ?? '', created_at: user.created_at }
+}
 
-function createSession(user: AppUser): AppSession {
+function mapSession(session: SupabaseSession | null): AppSession | null {
+  if (!session) return null
   return {
-    user,
-    access_token: generateId('mock_token'),
-    expires_at: Date.now() + SESSION_TTL_MS,
+    user: mapUser(session.user),
+    access_token: session.access_token,
+    expires_at: session.expires_at ?? 0,
   }
 }
-
-function persistSession(session: AppSession | null) {
-  if (session) {
-    localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(session))
-  } else {
-    localStorage.removeItem(STORAGE_KEYS.session)
-  }
-}
-
-const listeners = new Set<(event: string, session: AppSession | null) => void>()
 
 export async function signUp(email: string, password: string): Promise<AuthResult> {
-  await delay()
-  const users = store.read<StoredUser>(STORAGE_KEYS.users)
-  if (users.some((u) => u.email === email)) {
-    return { data: { user: null, session: null }, error: { message: 'An account with this email already exists.' } }
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  return {
+    data: { user: data.user ? mapUser(data.user) : null, session: mapSession(data.session) },
+    error: error ? { message: error.message } : null,
   }
-  const user: StoredUser = { id: generateId('user'), email, created_at: new Date().toISOString(), password }
-  store.write(STORAGE_KEYS.users, [...users, user])
-  const { password: _password, ...publicUser } = user
-  const session = createSession(publicUser)
-  persistSession(session)
-  listeners.forEach((cb) => cb('SIGNED_IN', session))
-  return { data: { user: publicUser, session }, error: null }
 }
 
 export async function signInWithPassword(email: string, password: string): Promise<AuthResult> {
-  await delay()
-  const users = store.read<StoredUser>(STORAGE_KEYS.users)
-  const user = users.find((u) => u.email === email && u.password === password)
-  if (!user) {
-    return { data: { user: null, session: null }, error: { message: 'Invalid email or password.' } }
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  return {
+    data: { user: data.user ? mapUser(data.user) : null, session: mapSession(data.session) },
+    error: error ? { message: error.message } : null,
   }
-  const { password: _password, ...publicUser } = user
-  const session = createSession(publicUser)
-  persistSession(session)
-  listeners.forEach((cb) => cb('SIGNED_IN', session))
-  return { data: { user: publicUser, session }, error: null }
 }
 
 export async function signOut(): Promise<{ error: { message: string } | null }> {
-  await delay(100, 200)
-  persistSession(null)
-  listeners.forEach((cb) => cb('SIGNED_OUT', null))
-  return { error: null }
+  const { error } = await supabase.auth.signOut()
+  return { error: error ? { message: error.message } : null }
 }
 
 export async function getSession(): Promise<{ data: { session: AppSession | null } }> {
-  await delay(50, 150)
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.session)
-    if (!raw) return { data: { session: null } }
-    const session = JSON.parse(raw) as AppSession
-    if (session.expires_at < Date.now()) {
-      persistSession(null)
-      return { data: { session: null } }
-    }
-    return { data: { session } }
-  } catch {
-    return { data: { session: null } }
-  }
+  const { data } = await supabase.auth.getSession()
+  return { data: { session: mapSession(data.session) } }
 }
 
 export function onAuthStateChange(
   cb: (event: string, session: AppSession | null) => void,
 ): { data: { subscription: { unsubscribe: () => void } } } {
-  listeners.add(cb)
-  return { data: { subscription: { unsubscribe: () => listeners.delete(cb) } } }
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    cb(event, mapSession(session))
+  })
+  return { data: { subscription } }
 }
