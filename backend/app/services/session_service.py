@@ -12,8 +12,10 @@ from supabase import Client
 
 from .escalation import evaluate_escalation, utcnow
 from .gemini_service import generate_escalation_summary
+from .textbelt_service import send_escalation_sms
 
 RECENT_PINGS_LIMIT = 10
+CONTACT_FIELD_BY_LEVEL = {2: "primary_contact_id", 3: "emergency_contact_id"}
 
 
 def get_owned_session(db: Client, walk_id: str, user_id: str) -> dict:
@@ -47,6 +49,30 @@ def get_session_by_share_token(db: Client, share_token: str) -> dict:
     if not res.data:
         raise HTTPException(status_code=404, detail="Walk not found")
     return res.data
+
+
+def _notify_contact(db: Client, session: dict, level: int, alert_summary: str) -> bool | None:
+    """Texts the contact for this level (2 -> primary, 3 -> emergency).
+
+    Returns True/False for a send attempt, or None if there was no contact
+    on file / no phone number to send to.
+
+    No link in the body: TextBelt rejects texts containing a URL from an
+    unverified API key (anti-spam policy) -- see backend/README.md. The
+    share link itself is still available via the public status endpoint;
+    it just isn't delivered inside this text until the key is verified.
+    """
+    contact_id = session.get(CONTACT_FIELD_BY_LEVEL.get(level, ""))
+    if not contact_id:
+        return None
+
+    contact_res = db.table("contacts").select("name,phone").eq("id", contact_id).single().execute()
+    contact = contact_res.data
+    if not contact or not contact.get("phone"):
+        return None
+
+    body = f"Safety alert (Level {level}): {alert_summary}"
+    return send_escalation_sms(contact["phone"], body)
 
 
 def recent_pings(db: Client, session_id: str) -> list[dict]:
@@ -100,8 +126,10 @@ async def reevaluate_session(db: Client, session: dict) -> tuple[dict, str | Non
                 last_loc_ts = datetime.fromisoformat(last_loc_ts.replace("Z", "+00:00"))
             context["minutes_since_movement"] = round((now - last_loc_ts).total_seconds() / 60, 1)
 
+        sms_sent = None
         if result.new_level in (2, 3):
             alert_summary = await generate_escalation_summary(context)
+            sms_sent = _notify_contact(db, session, result.new_level, alert_summary)
         elif result.new_level == 4:
             alert_summary = (
                 "SIMULATED: this walk would now escalate to emergency services. "
@@ -118,5 +146,15 @@ async def reevaluate_session(db: Client, session: dict) -> tuple[dict, str | Non
             "summary": alert_summary,
         }
     ).execute()
+
+    if result.transitioned and result.new_level in (2, 3):
+        db.table("check_in_logs").insert(
+            {
+                "session_id": session["id"],
+                "event_type": "sms_sent" if sms_sent else "sms_not_sent",
+                "level": result.new_level,
+                "summary": None if sms_sent is None else ("delivered to TextBelt" if sms_sent else "send failed or unconfigured"),
+            }
+        ).execute()
 
     return {**session, **updates}, alert_summary
