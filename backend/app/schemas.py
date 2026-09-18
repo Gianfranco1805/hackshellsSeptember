@@ -31,7 +31,7 @@ class ContactOut(BaseModel):
 class WalkStartRequest(BaseModel):
     primary_contact_id: str
     emergency_contact_id: str
-    check_in_interval_seconds: int = Field(gt=30, le=3600)
+    check_in_interval_seconds: int = Field(ge=10, le=3600)
 
 
 class LocationUpdate(BaseModel):
