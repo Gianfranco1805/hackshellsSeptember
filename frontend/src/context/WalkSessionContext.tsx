@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { recordCompletedWalk } from '../lib/walkHistory'
 import { api } from '../mock-api'
 import type { PlannedRoute, WalkSession } from '../types'
 import { useAuth } from './AuthContext'
@@ -128,8 +129,16 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
   }
 
   async function endWalk() {
-    if (!session) return
+    if (!session || !user) return
     const updated = await api.walkSessions.endWalk(session.session_id)
+    recordCompletedWalk({
+      session_id: updated.session_id,
+      user_id: user.id,
+      started_at: updated.started_at,
+      ended_at: new Date().toISOString(),
+      current_level: updated.current_level,
+      planned_route: updated.planned_route,
+    })
     setSession(updated)
     setResolvedAt(Date.now())
     clearPoll()

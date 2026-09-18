@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CheckInModal } from '../components/CheckInModal'
 import { DemoControls } from '../components/DemoControls'
 import { EscalationBanner } from '../components/EscalationBanner'
+import { WalkHistory } from '../components/WalkHistory'
 import { ShieldIcon } from '../components/icons'
 import { WalkMap } from '../components/route/WalkMap'
 import { Button } from '../components/ui/Button'
@@ -10,6 +11,7 @@ import { Spinner } from '../components/ui/Spinner'
 import { useAuth } from '../context/AuthContext'
 import { useWalkSession } from '../context/WalkSessionContext'
 import { useCheckInTimer } from '../hooks/useCheckInTimer'
+import { formatDuration } from '../lib/format'
 import { api } from '../mock-api'
 import type { AppUser, WalkSession } from '../types'
 
@@ -17,14 +19,6 @@ function formatSeconds(total: number): string {
   const minutes = Math.floor(total / 60)
   const seconds = total % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
-}
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.max(0, Math.round(ms / 1000))
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  if (minutes === 0) return `${seconds}s`
-  return `${minutes}m ${seconds}s`
 }
 
 // Reports the level reached at the moment the walk was ended, not the peak
@@ -121,6 +115,8 @@ export function ActiveWalkPage() {
             Start a walk
           </Button>
         </div>
+
+        <WalkHistory />
       </div>
     )
   }
