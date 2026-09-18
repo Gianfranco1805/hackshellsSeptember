@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+@theme {
+  --color-navy: #091f3f;
+  --color-navy-light: #1e3a5f;
+  --color-gold: #b6862c;
+  --color-gold-light: #e8d5a8;
+  --color-app-bg: #f2f2f7;
+  --font-sans: 'Poppins', sans-serif;
+}
