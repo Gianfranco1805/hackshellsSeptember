@@ -53,9 +53,10 @@ export function StartWalkPage() {
     return (
       <div className="mx-auto max-w-md px-4 pb-24 pt-6 text-center">
         <h1 className="mb-3 text-2xl font-semibold text-slate-900">Start a walk</h1>
-        <p className="text-slate-600">
-          Add a primary and an emergency contact first on the Contacts tab, then come back here to start a walk.
+        <p className="mb-6 text-slate-600">
+          Add a primary and an emergency contact first, then come back here to start a walk.
         </p>
+        <Button onClick={() => navigate('/contacts')}>Go to Contacts</Button>
       </div>
     )
   }

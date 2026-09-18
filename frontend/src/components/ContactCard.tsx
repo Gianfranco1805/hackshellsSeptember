@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { isValidPhone } from '../lib/format'
 import type { Contact } from '../types'
 import { Button } from './ui/Button'
 import { Card } from './ui/Card'
@@ -14,9 +15,15 @@ export function ContactCard({ contact, onUpdate, onDelete }: ContactCardProps) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(contact.name)
   const [phone, setPhone] = useState(contact.phone)
+  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   async function handleSave() {
+    if (!isValidPhone(phone)) {
+      setError('Enter a valid phone number.')
+      return
+    }
+    setError(null)
     setBusy(true)
     await onUpdate(contact.id, { name, phone })
     setBusy(false)
@@ -33,6 +40,7 @@ export function ContactCard({ contact, onUpdate, onDelete }: ContactCardProps) {
       <Card className="flex flex-col gap-3">
         <TextInput label="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <TextInput label="Phone number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setEditing(false)} disabled={busy}>
             Cancel

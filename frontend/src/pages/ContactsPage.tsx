@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ContactCard } from '../components/ContactCard'
 import { ContactForm } from '../components/ContactForm'
 import { Spinner } from '../components/ui/Spinner'
@@ -7,7 +8,8 @@ import { api } from '../mock-api'
 import type { Contact, ContactType } from '../types'
 
 export function ContactsPage() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -33,6 +35,11 @@ export function ContactsPage() {
   async function handleDelete(id: string) {
     await api.contacts.deleteContact(id)
     setContacts((prev) => prev.filter((c) => c.id !== id))
+  }
+
+  async function handleLogout() {
+    await signOut()
+    navigate('/login', { replace: true })
   }
 
   if (loading) {
@@ -71,6 +78,10 @@ export function ContactsPage() {
         </div>
         {emergency.length === 0 && <ContactForm type="emergency" onSubmit={handleAdd} />}
       </section>
+
+      <button type="button" className="mt-10 text-sm font-medium text-slate-500" onClick={handleLogout}>
+        Log out
+      </button>
     </div>
   )
 }
