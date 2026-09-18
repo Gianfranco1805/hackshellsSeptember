@@ -60,7 +60,6 @@ export function ActiveWalkPage() {
   const { session, loading, resolvedAt, submitCheckIn, endWalk, clearEndedWalk } = useWalkSession()
   const { secondsRemaining, isOverdue } = useCheckInTimer(session)
   const navigate = useNavigate()
-  const [linkCopied, setLinkCopied] = useState(false)
   const [emergencyContactCount, setEmergencyContactCount] = useState<number | null>(null)
   const notifiedNames = useNotifiedContactNames(session)
 
@@ -70,13 +69,6 @@ export function ActiveWalkPage() {
       setEmergencyContactCount(list.filter((c) => c.type === 'emergency').length)
     })
   }, [user, session])
-
-  async function handleCopyLink() {
-    if (!session) return
-    await navigator.clipboard.writeText(`${window.location.origin}/contact/${session.session_id}`)
-    setLinkCopied(true)
-    setTimeout(() => setLinkCopied(false), 2000)
-  }
 
   function handleStartNew() {
     clearEndedWalk()
@@ -146,13 +138,7 @@ export function ActiveWalkPage() {
 
       <WalkMap route={session.planned_route} currentLat={session.last_known_lat} currentLng={session.last_known_lng} />
 
-      <Button variant="secondary" onClick={endWalk}>
-        End walk
-      </Button>
-
-      <Button variant="secondary" className="mt-3" onClick={handleCopyLink}>
-        {linkCopied ? 'Link copied!' : 'Copy contact link'}
-      </Button>
+      <Button onClick={endWalk}>End walk</Button>
 
       <DemoControls />
 
