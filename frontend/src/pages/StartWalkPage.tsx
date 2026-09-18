@@ -22,7 +22,7 @@ export function StartWalkPage() {
   const [loading, setLoading] = useState(true)
   const [primaryContactId, setPrimaryContactId] = useState('')
   const [emergencyContactId, setEmergencyContactId] = useState('')
-  const [intervalValue, setIntervalValue] = useState(20)
+  const [intervalValue, setIntervalValue] = useState<number | ''>(20)
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('seconds')
   const [starting, setStarting] = useState(false)
   const [plannedRoute, setPlannedRoute] = useState<PlannedRoute | null>(null)
@@ -39,13 +39,14 @@ export function StartWalkPage() {
 
   const primaryOptions = contacts.filter((c) => c.type === 'primary')
   const emergencyOptions = contacts.filter((c) => c.type === 'emergency')
-  const intervalSeconds = intervalUnit === 'minutes' ? intervalValue * 60 : intervalValue
+  const intervalSeconds = (intervalUnit === 'minutes' ? (intervalValue || 0) * 60 : intervalValue || 0)
   const canStart = Boolean(primaryContactId && emergencyContactId && intervalSeconds >= MIN_INTERVAL_SECONDS)
 
   function handleUnitChange(unit: IntervalUnit) {
     if (unit === intervalUnit) return
     // Convert the typed value so the underlying seconds stay roughly the same across the unit switch.
-    setIntervalValue(unit === 'minutes' ? Math.max(1, Math.round(intervalValue / 60)) : intervalValue * 60)
+    const current = intervalValue || 0
+    setIntervalValue(unit === 'minutes' ? Math.max(1, Math.round(current / 60)) : current * 60)
     setIntervalUnit(unit)
   }
 
@@ -113,7 +114,7 @@ export function StartWalkPage() {
                 min={intervalUnit === 'minutes' ? 1 : MIN_INTERVAL_SECONDS}
                 step={intervalUnit === 'minutes' ? 1 : 5}
                 value={intervalValue}
-                onChange={(e) => setIntervalValue(Number(e.target.value))}
+                onChange={(e) => setIntervalValue(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </div>
             <div className="flex gap-1.5 pb-0.5">
