@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckInModal } from '../components/CheckInModal'
 import { DemoControls } from '../components/DemoControls'
@@ -17,6 +18,14 @@ export function ActiveWalkPage() {
   const { session, loading, submitCheckIn, endWalk } = useWalkSession()
   const { secondsRemaining, isOverdue } = useCheckInTimer(session)
   const navigate = useNavigate()
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  async function handleCopyLink() {
+    if (!session) return
+    await navigator.clipboard.writeText(`${window.location.origin}/contact/${session.session_id}`)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
 
   if (loading) {
     return (
@@ -49,6 +58,10 @@ export function ActiveWalkPage() {
 
       <Button variant="secondary" onClick={endWalk}>
         End walk
+      </Button>
+
+      <Button variant="secondary" className="mt-3" onClick={handleCopyLink}>
+        {linkCopied ? 'Link copied!' : 'Copy contact link'}
       </Button>
 
       <DemoControls />
