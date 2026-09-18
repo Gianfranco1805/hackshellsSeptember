@@ -13,6 +13,20 @@ export type EscalationLevel = 1 | 2 | 3 | 4
 
 export type WalkStatus = 'active' | 'resolved' | 'escalated'
 
+export interface RoutePoint {
+  label: string
+  lat: number
+  lng: number
+}
+
+export interface PlannedRoute {
+  start_point: RoutePoint
+  end_point: RoutePoint
+  polyline: [number, number][] // [lat, lng], ordered start -> end
+  distance_meters: number
+  duration_seconds: number
+}
+
 export interface WalkSession {
   session_id: string
   user_id: string
@@ -28,6 +42,7 @@ export interface WalkSession {
   emergency_contact_id: string
   status: WalkStatus
   started_at: string
+  planned_route: PlannedRoute | null
 }
 
 export interface AppUser {

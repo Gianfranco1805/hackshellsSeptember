@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from '../mock-api'
-import type { WalkSession } from '../types'
+import type { PlannedRoute, WalkSession } from '../types'
 import { useAuth } from './AuthContext'
 
 const POLL_INTERVAL_MS = 3000
@@ -9,7 +9,12 @@ interface WalkSessionContextValue {
   session: WalkSession | null
   loading: boolean
   resolvedAt: number | null
-  startWalk: (input: { primaryContactId: string; emergencyContactId: string; checkInIntervalSeconds: number }) => Promise<void>
+  startWalk: (input: {
+    primaryContactId: string
+    emergencyContactId: string
+    checkInIntervalSeconds: number
+    plannedRoute?: PlannedRoute | null
+  }) => Promise<void>
   submitCheckIn: () => Promise<void>
   endWalk: () => Promise<void>
   clearEndedWalk: () => void
@@ -57,7 +62,12 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
     return () => clearPoll()
   }, [user, pollStatus, clearPoll])
 
-  async function startWalk(input: { primaryContactId: string; emergencyContactId: string; checkInIntervalSeconds: number }) {
+  async function startWalk(input: {
+    primaryContactId: string
+    emergencyContactId: string
+    checkInIntervalSeconds: number
+    plannedRoute?: PlannedRoute | null
+  }) {
     if (!user) return
     const created = await api.walkSessions.startWalk({ userId: user.id, ...input })
     setSession(created)

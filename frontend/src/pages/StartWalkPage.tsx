@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { RoutePicker } from '../components/route/RoutePicker'
 import { Button } from '../components/ui/Button'
 import { Select } from '../components/ui/Select'
 import { Spinner } from '../components/ui/Spinner'
@@ -7,7 +8,7 @@ import { TextInput } from '../components/ui/TextInput'
 import { useAuth } from '../context/AuthContext'
 import { useWalkSession } from '../context/WalkSessionContext'
 import { api } from '../mock-api'
-import type { Contact } from '../types'
+import type { Contact, PlannedRoute } from '../types'
 
 const MIN_INTERVAL_SECONDS = 10
 
@@ -24,6 +25,7 @@ export function StartWalkPage() {
   const [intervalValue, setIntervalValue] = useState(20)
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('seconds')
   const [starting, setStarting] = useState(false)
+  const [plannedRoute, setPlannedRoute] = useState<PlannedRoute | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -49,7 +51,7 @@ export function StartWalkPage() {
 
   async function handleStart() {
     setStarting(true)
-    await startWalk({ primaryContactId, emergencyContactId, checkInIntervalSeconds: intervalSeconds })
+    await startWalk({ primaryContactId, emergencyContactId, checkInIntervalSeconds: intervalSeconds, plannedRoute })
     setStarting(false)
     navigate('/walk')
   }
@@ -99,6 +101,8 @@ export function StartWalkPage() {
             </option>
           ))}
         </Select>
+
+        <RoutePicker onRouteChange={setPlannedRoute} />
 
         <div>
           <div className="flex items-end gap-2">

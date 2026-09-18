@@ -4,6 +4,7 @@ import { CheckInModal } from '../components/CheckInModal'
 import { DemoControls } from '../components/DemoControls'
 import { EscalationBanner } from '../components/EscalationBanner'
 import { ShieldIcon } from '../components/icons'
+import { WalkMap } from '../components/route/WalkMap'
 import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 import { useAuth } from '../context/AuthContext'
@@ -142,6 +143,8 @@ export function ActiveWalkPage() {
         <p className="text-sm text-slate-500">Next check-in</p>
         <p className="text-4xl font-semibold tabular-nums text-navy">{formatSeconds(secondsRemaining)}</p>
       </div>
+
+      <WalkMap route={session.planned_route} currentLat={session.last_known_lat} currentLng={session.last_known_lng} />
 
       <Button variant="secondary" onClick={endWalk}>
         End walk

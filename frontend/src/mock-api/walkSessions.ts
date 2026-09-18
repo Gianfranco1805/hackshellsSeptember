@@ -1,5 +1,5 @@
 import { delay, generateId, store, STORAGE_KEYS } from './client'
-import type { EscalationLevel, WalkSession } from '../types'
+import type { EscalationLevel, PlannedRoute, WalkSession } from '../types'
 
 // Everything in this file is a disposable, backend-owned-eventually
 // simulation. When the real FastAPI escalation state machine + GPS check
@@ -16,8 +16,24 @@ const ANCHOR_LNG = -80.3733
 
 const GRACE_WINDOW_SECONDS = 15
 
+// Demo-only: a real route would take many real minutes to walk, far too slow
+// to be visible in a short demo session, so the mock walker traverses the
+// selected route over a fixed, short duration instead.
+const DEMO_ROUTE_DURATION_SECONDS = 120
+
 function jitteredCoord(base: number): number {
   return base + (Math.random() - 0.5) * 0.0015
+}
+
+function currentRoutePosition(session: WalkSession, now: number): { lat: number; lng: number } | null {
+  const polyline = session.planned_route?.polyline
+  if (!polyline || polyline.length === 0) return null
+
+  const elapsedSeconds = (now - new Date(session.started_at).getTime()) / 1000
+  const progress = Math.min(1, elapsedSeconds / DEMO_ROUTE_DURATION_SECONDS)
+  const index = Math.floor(progress * (polyline.length - 1))
+  const [lat, lng] = polyline[index]
+  return { lat, lng }
 }
 
 // Assumption to confirm with the backend teammate: a confirmed check-in
@@ -43,12 +59,16 @@ function computeCurrentState(session: WalkSession, now: number): WalkSession {
     level = 4
   }
 
+  const routePosition = currentRoutePosition(session, now)
+  const baseLat = routePosition?.lat ?? session.last_known_lat ?? ANCHOR_LAT
+  const baseLng = routePosition?.lng ?? session.last_known_lng ?? ANCHOR_LNG
+
   return {
     ...session,
     current_level: level,
     status: level === 4 ? 'escalated' : session.status,
-    last_known_lat: jitteredCoord(session.last_known_lat ?? ANCHOR_LAT),
-    last_known_lng: jitteredCoord(session.last_known_lng ?? ANCHOR_LNG),
+    last_known_lat: jitteredCoord(baseLat),
+    last_known_lng: jitteredCoord(baseLng),
     last_location_timestamp: new Date(now).toISOString(),
   }
 }
@@ -76,9 +96,12 @@ export async function startWalk(input: {
   primaryContactId: string
   emergencyContactId: string
   checkInIntervalSeconds: number
+  plannedRoute?: PlannedRoute | null
 }): Promise<WalkSession> {
   await delay()
   const now = new Date().toISOString()
+  const startLat = input.plannedRoute?.start_point.lat ?? ANCHOR_LAT
+  const startLng = input.plannedRoute?.start_point.lng ?? ANCHOR_LNG
   const session: WalkSession = {
     session_id: generateId('walk'),
     user_id: input.userId,
@@ -86,14 +109,15 @@ export async function startWalk(input: {
     current_level: 1,
     last_ping_time: now,
     last_response_time: now,
-    last_known_lat: ANCHOR_LAT,
-    last_known_lng: ANCHOR_LNG,
+    last_known_lat: startLat,
+    last_known_lng: startLng,
     last_location_timestamp: now,
     is_stationary: false,
     primary_contact_id: input.primaryContactId,
     emergency_contact_id: input.emergencyContactId,
     status: 'active',
     started_at: now,
+    planned_route: input.plannedRoute ?? null,
   }
   writeOne(session)
   return session
