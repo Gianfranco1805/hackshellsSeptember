@@ -45,4 +45,6 @@ def update_contact(
 @router.delete("/{contact_id}", status_code=204)
 def delete_contact(contact_id: str, user_id: str = Depends(get_current_user_id)):
     db = get_supabase()
-    db.table("contacts").delete().eq("id", contact_id).eq("user_id", user_id).execute()
+    res = db.table("contacts").delete().eq("id", contact_id).eq("user_id", user_id).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Contact not found")

@@ -140,6 +140,8 @@ async def get_status(walk_id: str, user_id: str = Depends(get_current_user_id)):
 async def resolve_walk(walk_id: str, user_id: str = Depends(get_current_user_id)):
     db = get_supabase()
     session = get_owned_session(db, walk_id, user_id)
+    if session["status"] != "active":
+        raise HTTPException(status_code=400, detail="Walk is not active")
 
     now = utcnow()
     updates = {"status": "resolved", "resolved_at": now.isoformat()}
