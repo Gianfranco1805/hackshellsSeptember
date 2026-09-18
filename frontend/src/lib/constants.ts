@@ -1,12 +1,5 @@
 import type { EscalationLevel } from '../types'
 
-export const INTERVAL_OPTIONS = [
-  { label: '20 seconds (demo)', seconds: 20 },
-  { label: '5 minutes', seconds: 5 * 60 },
-  { label: '10 minutes', seconds: 10 * 60 },
-  { label: '15 minutes', seconds: 15 * 60 },
-] as const
-
 export const ESCALATION_LEVEL_META: Record<
   EscalationLevel,
   { label: string; description: string; className: string }
