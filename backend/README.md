@@ -92,13 +92,29 @@ If `GEMINI_API_KEY` is unset, the call errors, or it takes longer than 6s,
 same structured context instead of raising — an alert always has *some*
 readable text, per the handoff doc's explicit fallback requirement.
 
+## Location label (reverse geocoding)
+
+Before generating a Level 2/3 summary, `session_service.reevaluate_session()`
+calls `app/services/geocoding_service.py::reverse_geocode()` to turn the
+last-known lat/lng into a short address (e.g. "NW 7th St, Miami") via
+[OpenStreetMap's Nominatim](https://nominatim.openstreetmap.org) — free, no
+API key or signup, unlike Google Maps Geocoding (needs a billed key) or
+OpenTripMap (needs a key request and is POI-oriented, not built for address
+lookup). The result populates `location_label` in the context passed to
+Gemini, which already preferred that field over raw coordinates
+(`gemini_service.py::_location_label`) but never had it populated before now.
+
+Same fallback philosophy as everywhere else: a failed or slow (>4s) lookup
+returns `None` and the summary just falls back to raw coordinates instead of
+blocking escalation. No Maps link is added anywhere in the SMS — see the
+TextBelt section above for why.
+
 ## Alert delivery (SMS via TextBelt)
 
 When a session escalates to Level 2 or 3, `session_service._notify_contact()`
 texts the relevant contact (primary at 2, emergency at 3) via
 [TextBelt](https://textbelt.com) (`app/services/textbelt_service.py`) with the
-Gemini summary plus the public `share_url`. Same fallback philosophy as
-Gemini: if TextBelt isn't configured or the send fails, the escalation still
+Gemini summary. Same fallback philosophy as Gemini: if TextBelt isn't configured or the send fails, the escalation still
 proceeds and the alert is still visible via the public link — a broken
 delivery integration never blocks the state machine. Each attempt is logged
 to `check_in_logs` as `sms_sent` / `sms_not_sent`.
