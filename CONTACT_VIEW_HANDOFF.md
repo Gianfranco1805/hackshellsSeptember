@@ -1,5 +1,7 @@
 # Contact-Facing View — Build Guide
 
+> **Update:** the route and param name below were corrected from an earlier version of this doc (`/contact/:sessionId` → `/status/:shareToken`) to match how the real backend actually builds the contact link. If you already started on the old path, just rename it — the rest of this guide is unaffected.
+
 This is your piece of the Safety Walking Companion app (see `PROJECT_HANDOFF.md` for the full picture). When a walk escalates to Level 2 or 3, the walker's primary/emergency contact gets a link. This is the page that link opens: it shows the walker's last known location, current status, and a plain-language summary — plus the simulated Level 4 "would now escalate to emergency services" screen.
 
 You're building this inside the same frontend app the rest of the team is using (`frontend/`), so you get routing, styling, and a working mock data layer for free instead of starting from scratch. Follow the steps below in order — each one is small and independently testable, so commit as you finish each one.
@@ -24,7 +26,7 @@ Open `frontend/src/router/AppRouter.tsx`. Every existing route in there is wrapp
 Add a new route:
 
 ```tsx
-<Route path="/contact/:sessionId" element={<ContactViewPage />} />
+<Route path="/status/:shareToken" element={<ContactViewPage />} />
 ```
 
 Create `frontend/src/pages/ContactViewPage.tsx`:
@@ -33,12 +35,12 @@ Create `frontend/src/pages/ContactViewPage.tsx`:
 import { useParams } from 'react-router-dom'
 
 export function ContactViewPage() {
-  const { sessionId } = useParams()
-  return <p>Contact view for session: {sessionId}</p>
+  const { shareToken } = useParams()
+  return <p>Contact view for: {shareToken}</p>
 }
 ```
 
-Import it in `AppRouter.tsx` and add the route above. Run the app, navigate to `http://localhost:5173/contact/anything` — you should see your placeholder text. That proves routing works before you write any real logic.
+Import it in `AppRouter.tsx` and add the route above. Run the app, navigate to `http://localhost:5173/status/anything` — you should see your placeholder text. That proves routing works before you write any real logic.
 
 ## Step 2 — Real data, no styling yet
 
@@ -51,13 +53,13 @@ import { api } from '../mock-api'
 import type { WalkSession } from '../types'
 
 export function ContactViewPage() {
-  const { sessionId } = useParams()
+  const { shareToken } = useParams()
   const [session, setSession] = useState<WalkSession | null>(null)
 
   useEffect(() => {
-    if (!sessionId) return
-    api.walkSessions.getSessionStatus(sessionId).then(setSession)
-  }, [sessionId])
+    if (!shareToken) return
+    api.walkSessions.getSessionStatus(shareToken).then(setSession)
+  }, [shareToken])
 
   if (!session) return <p>Loading…</p>
 
@@ -65,13 +67,15 @@ export function ContactViewPage() {
 }
 ```
 
-**To test this you need a real session ID.** Easiest way right now: open the app, sign up, add a primary + emergency contact, start a walk. Then open the browser devtools console and run:
+Note: for now, in the mock layer, that "share token" is really just the walk session's internal id underneath — good enough to build and test against. Once the real backend is wired in, this call swaps to a proper unauthenticated public endpoint keyed by a real share token; that swap is the frontend engineer's job, not yours — nothing about your page changes.
+
+**To test this you need a real id.** Easiest way right now: open the app, sign up, add a primary + emergency contact, start a walk. Then open the browser devtools console and run:
 
 ```js
 JSON.parse(localStorage.getItem('mock_walk_sessions'))
 ```
 
-Copy the `session_id` value and use it in the URL: `/contact/<that-id>`. You should see the raw session data dumped on the page. (Once the "copy contact link" button lands elsewhere in the app, this gets a lot easier — you'll just paste a copied link directly.)
+Copy the `session_id` value and use it in the URL: `/status/<that-id>`. You should see the raw session data dumped on the page. (Once the "copy contact link" button lands elsewhere in the app, this gets a lot easier — you'll just paste a copied link directly.)
 
 ## Step 3 — Reuse the existing level display
 
@@ -133,7 +137,7 @@ Feel free to style this properly with Tailwind classes once it works — look at
 
 ## Step 7 — Stretch goal (optional, only if steps 1–6 are solid)
 
-Right now your page loads the session once and never updates. If there's time, make it poll like the walker's own screen does — call `api.walkSessions.getSessionStatus(sessionId)` again every few seconds with `setInterval` so the contact sees status changes without refreshing manually. Look at `frontend/src/context/WalkSessionContext.tsx` for the pattern (it does exactly this).
+Right now your page loads the session once and never updates. If there's time, make it poll like the walker's own screen does — call `api.walkSessions.getSessionStatus(shareToken)` again every few seconds with `setInterval` so the contact sees status changes without refreshing manually. Look at `frontend/src/context/WalkSessionContext.tsx` for the pattern (it does exactly this).
 
 ## Questions / stuck?
 
