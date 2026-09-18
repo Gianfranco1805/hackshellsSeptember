@@ -92,11 +92,32 @@ If `GEMINI_API_KEY` is unset, the call errors, or it takes longer than 6s,
 same structured context instead of raising — an alert always has *some*
 readable text, per the handoff doc's explicit fallback requirement.
 
-## Open items for whoever wires up SMS
+## Alert delivery (SMS via TextBelt)
 
-Alert sending is currently "generate the summary and persist it" — actual SMS
-delivery to contacts isn't implemented (handoff doc leaves this as
-simulated-or-real, team's call). `last_alert_summary` on `walk_sessions` plus
-the `share_url` is everything needed to plug in a provider (e.g. Twilio) at
-the point in `session_service.reevaluate_session()` where the summary is
-generated.
+When a session escalates to Level 2 or 3, `session_service._notify_contact()`
+texts the relevant contact (primary at 2, emergency at 3) via
+[TextBelt](https://textbelt.com) (`app/services/textbelt_service.py`) with the
+Gemini summary plus the public `share_url`. Same fallback philosophy as
+Gemini: if TextBelt isn't configured or the send fails, the escalation still
+proceeds and the alert is still visible via the public link — a broken
+delivery integration never blocks the state machine. Each attempt is logged
+to `check_in_logs` as `sms_sent` / `sms_not_sent`.
+
+**Why TextBelt**: real SMS from a Twilio number to US numbers requires A2P
+10DLC carrier registration, which takes days to approve — doesn't fit a
+hackathon timeline. TextBelt is a single HTTP POST with no carrier
+registration and no recipient opt-in step, so it's what's actually wired up.
+
+Requires `TEXTBELT_API_KEY` (see `.env.example`). Leave it unset to run with
+sending disabled — alerts still generate and are visible via the public link
+either way (logged as `sms_not_sent`, escalation still proceeds).
+
+**The text body does not include the `share_url`.** TextBelt rejects any
+message containing a URL from an unverified key ("ability to send URLs via
+text is limited to verified accounts") — confirmed against the real API.
+Verification is a manual review (email support@textbelt.com or use the link
+`https://textbelt.com/whitelist?key=...` returns). Until the key is verified,
+the SMS is level + plain-language summary only; the link itself still works
+and is still returned by both status endpoints, it just isn't texted
+automatically. Once verified, add the link back into the body built in
+`session_service._notify_contact()`.
