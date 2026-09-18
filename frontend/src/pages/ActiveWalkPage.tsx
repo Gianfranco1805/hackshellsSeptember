@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CheckInModal } from '../components/CheckInModal'
 import { DemoControls } from '../components/DemoControls'
 import { EscalationBanner } from '../components/EscalationBanner'
-import { ContactsIcon, ShieldIcon } from '../components/icons'
+import { ShieldIcon } from '../components/icons'
 import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 import { useAuth } from '../context/AuthContext'
@@ -120,23 +120,12 @@ export function ActiveWalkPage() {
               : 'Add an emergency contact before you head out.'}
         </p>
 
-        <div className="mb-6 rounded-3xl bg-navy p-6 text-center text-white">
+        <div className="rounded-3xl bg-navy p-6 text-center text-white">
           <ShieldIcon className="mx-auto mb-3 h-10 w-10 text-gold" />
           <h2 className="mb-1 text-lg font-semibold">Ready to head out?</h2>
           <p className="mb-5 text-sm text-white/80">Start a walk and we'll check in with you along the way.</p>
           <Button variant="accent" onClick={() => navigate('/start-walk')}>
             Start a walk
-          </Button>
-        </div>
-
-        <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
-          <Button variant="secondary" size="pill" className="shrink-0" onClick={() => navigate('/contacts')}>
-            <ContactsIcon className="h-4 w-4" />
-            Contacts
-          </Button>
-          <Button variant="secondary" size="pill" className="shrink-0" onClick={() => navigate('/start-walk')}>
-            <ShieldIcon className="h-4 w-4" />
-            Start Walk
           </Button>
         </div>
       </div>
