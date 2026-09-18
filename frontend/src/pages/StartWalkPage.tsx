@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { Select } from '../components/ui/Select'
 import { Spinner } from '../components/ui/Spinner'
+import { TextInput } from '../components/ui/TextInput'
 import { useAuth } from '../context/AuthContext'
 import { useWalkSession } from '../context/WalkSessionContext'
 import { INTERVAL_OPTIONS } from '../lib/constants'
 import { api } from '../mock-api'
 import type { Contact } from '../types'
+
+const MIN_INTERVAL_SECONDS = 10
 
 export function StartWalkPage() {
   const { user } = useAuth()
@@ -32,7 +35,7 @@ export function StartWalkPage() {
 
   const primaryOptions = contacts.filter((c) => c.type === 'primary')
   const emergencyOptions = contacts.filter((c) => c.type === 'emergency')
-  const canStart = Boolean(primaryContactId && emergencyContactId)
+  const canStart = Boolean(primaryContactId && emergencyContactId && intervalSeconds >= MIN_INTERVAL_SECONDS)
 
   async function handleStart() {
     setStarting(true)
@@ -87,17 +90,32 @@ export function StartWalkPage() {
           ))}
         </Select>
 
-        <Select
-          label="Check-in interval"
-          value={intervalSeconds}
-          onChange={(e) => setIntervalSeconds(Number(e.target.value))}
-        >
-          {INTERVAL_OPTIONS.map((opt) => (
-            <option key={opt.seconds} value={opt.seconds}>
-              {opt.label}
-            </option>
-          ))}
-        </Select>
+        <div>
+          <TextInput
+            label="Check-in interval (seconds)"
+            type="number"
+            min={MIN_INTERVAL_SECONDS}
+            step={5}
+            value={intervalSeconds}
+            onChange={(e) => setIntervalSeconds(Number(e.target.value))}
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            {INTERVAL_OPTIONS.map((opt) => (
+              <button
+                key={opt.seconds}
+                type="button"
+                onClick={() => setIntervalSeconds(opt.seconds)}
+                className={`rounded-full border px-3 py-1 text-sm ${
+                  intervalSeconds === opt.seconds
+                    ? 'border-violet-500 bg-violet-100 text-violet-700'
+                    : 'border-slate-300 text-slate-600'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <Button onClick={handleStart} disabled={!canStart || starting}>
           {starting ? 'Starting…' : 'Start walk'}
