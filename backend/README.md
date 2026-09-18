@@ -112,15 +112,25 @@ sending disabled — alerts still generate and are visible via the public link
 either way (logged as `sms_not_sent`, escalation still proceeds).
 
 **The text body does not include the `share_url`.** TextBelt rejects any
-message containing a URL from an unverified key ("ability to send URLs via
-text is limited to verified accounts") — confirmed against the real API.
-Verification is a manual review (email support@textbelt.com or use the link
-`https://textbelt.com/whitelist?key=...` returns). Until the key is verified,
-the SMS carries the Gemini summary plus a `Last known location: <address>`
-line (see below) instead of a link; the link itself still works and is
-still returned by both status endpoints, it just isn't texted automatically.
-Once verified, add the link back into the body built in
-`session_service._notify_contact()`.
+message containing a domain-shaped pattern (`google.com`, `maps.apple.com`,
+etc.) from an unverified key ("ability to send URLs via text is limited to
+verified accounts") — confirmed against the real API, and it doesn't matter
+whether the scheme is `https://`, `www.`, or missing entirely; any
+`word.tld` shape gets blocked. Verification is a manual review (email
+support@textbelt.com or use the link `https://textbelt.com/whitelist?key=...`
+returns). Until the key is verified, the SMS carries the Gemini summary plus
+an `Open in Maps: maps://?ll=<lat>,<lng>` line instead of a real link — see
+below for why that one line gets through. Once verified, the `share_url`
+could be added back into the body built in `session_service._notify_contact()`.
+
+**The Maps link uses `maps://`, Apple's own scheme, instead of an `https://`
+Google/Apple Maps URL.** `maps://` has no dot+TLD shape, so it isn't caught
+by TextBelt's filter (confirmed: `https://maps.apple.com/...` and
+`https://www.google.com/maps/...` are both blocked, `maps://?ll=lat,lng` is
+not). Confirmed on a real device that iOS Messages renders it as a tappable
+link that opens Apple Maps at that location. Android's equivalent would be a
+`geo:lat,lng?q=lat,lng` URI (also unblocked in testing), not currently used
+since the app's target device wasn't confirmed as Android.
 
 ## Location label (reverse geocoding)
 
@@ -133,17 +143,11 @@ API key or signup, unlike Google Maps Geocoding (needs a billed key) or
 OpenTripMap (needs a key request and is POI-oriented, not built for address
 lookup). The result populates `location_label` in the context passed to
 Gemini, which already preferred that field over raw coordinates
-(`gemini_service.py::_location_label`) but never had it populated before now,
-and is also appended to the SMS body as its own `Last known location:` line
-by `_notify_contact()`.
-
-The address is deliberately full postal format (house number, street, city,
-state, zip), not a short "street, city" label: iOS Messages and Android
-Messages both auto-detect a well-formed postal address in plain text and
-make it tappable to open in the phone's default Maps app — no actual
-http(s) link required. That's what makes it "openable" from the SMS despite
-TextBelt's URL restriction (see above) — a plain address string isn't a URL.
+(`gemini_service.py::_location_label`) but never had it populated before now
+— it's used only for that natural-language sentence (e.g. "...missed her
+check-in ... along University Drive..."), not texted as its own line; the
+`maps://` link (see above) is what carries the actual location in the SMS.
 
 Same fallback philosophy as everywhere else: a failed or slow (>4s) lookup
-returns `None` and the summary/SMS just fall back to raw coordinates instead
-of blocking escalation.
+returns `None` and the summary just falls back to raw coordinates instead of
+blocking escalation.
