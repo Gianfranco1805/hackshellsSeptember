@@ -1,0 +1,64 @@
+import { useState } from 'react'
+import type { Contact } from '../types'
+import { Button } from './ui/Button'
+import { Card } from './ui/Card'
+import { TextInput } from './ui/TextInput'
+
+interface ContactCardProps {
+  contact: Contact
+  onUpdate: (id: string, updates: { name: string; phone: string }) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+}
+
+export function ContactCard({ contact, onUpdate, onDelete }: ContactCardProps) {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(contact.name)
+  const [phone, setPhone] = useState(contact.phone)
+  const [busy, setBusy] = useState(false)
+
+  async function handleSave() {
+    setBusy(true)
+    await onUpdate(contact.id, { name, phone })
+    setBusy(false)
+    setEditing(false)
+  }
+
+  async function handleDelete() {
+    setBusy(true)
+    await onDelete(contact.id)
+  }
+
+  if (editing) {
+    return (
+      <Card className="flex flex-col gap-3">
+        <TextInput label="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <TextInput label="Phone number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setEditing(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={busy}>
+            Save
+          </Button>
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="flex items-center justify-between gap-3">
+      <div>
+        <p className="font-medium text-slate-900">{contact.name}</p>
+        <p className="text-sm text-slate-600">{contact.phone}</p>
+      </div>
+      <div className="flex gap-2">
+        <button type="button" className="text-sm font-medium text-violet-600" onClick={() => setEditing(true)} disabled={busy}>
+          Edit
+        </button>
+        <button type="button" className="text-sm font-medium text-red-600" onClick={handleDelete} disabled={busy}>
+          Delete
+        </button>
+      </div>
+    </Card>
+  )
+}
