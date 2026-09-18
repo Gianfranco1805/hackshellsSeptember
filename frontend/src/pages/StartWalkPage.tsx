@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { RoutePicker } from '../components/route/RoutePicker'
 import { Button } from '../components/ui/Button'
 import { Select } from '../components/ui/Select'
 import { Spinner } from '../components/ui/Spinner'
@@ -7,7 +8,7 @@ import { TextInput } from '../components/ui/TextInput'
 import { useAuth } from '../context/AuthContext'
 import { useWalkSession } from '../context/WalkSessionContext'
 import { api } from '../mock-api'
-import type { Contact } from '../types'
+import type { Contact, PlannedRoute } from '../types'
 
 const MIN_INTERVAL_SECONDS = 10
 
@@ -21,9 +22,10 @@ export function StartWalkPage() {
   const [loading, setLoading] = useState(true)
   const [primaryContactId, setPrimaryContactId] = useState('')
   const [emergencyContactId, setEmergencyContactId] = useState('')
-  const [intervalValue, setIntervalValue] = useState(20)
+  const [intervalValue, setIntervalValue] = useState<number | ''>(20)
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('seconds')
   const [starting, setStarting] = useState(false)
+  const [plannedRoute, setPlannedRoute] = useState<PlannedRoute | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -37,19 +39,20 @@ export function StartWalkPage() {
 
   const primaryOptions = contacts.filter((c) => c.type === 'primary')
   const emergencyOptions = contacts.filter((c) => c.type === 'emergency')
-  const intervalSeconds = intervalUnit === 'minutes' ? intervalValue * 60 : intervalValue
+  const intervalSeconds = (intervalUnit === 'minutes' ? (intervalValue || 0) * 60 : intervalValue || 0)
   const canStart = Boolean(primaryContactId && emergencyContactId && intervalSeconds >= MIN_INTERVAL_SECONDS)
 
   function handleUnitChange(unit: IntervalUnit) {
     if (unit === intervalUnit) return
     // Convert the typed value so the underlying seconds stay roughly the same across the unit switch.
-    setIntervalValue(unit === 'minutes' ? Math.max(1, Math.round(intervalValue / 60)) : intervalValue * 60)
+    const current = intervalValue || 0
+    setIntervalValue(unit === 'minutes' ? Math.max(1, Math.round(current / 60)) : current * 60)
     setIntervalUnit(unit)
   }
 
   async function handleStart() {
     setStarting(true)
-    await startWalk({ primaryContactId, emergencyContactId, checkInIntervalSeconds: intervalSeconds })
+    await startWalk({ primaryContactId, emergencyContactId, checkInIntervalSeconds: intervalSeconds, plannedRoute })
     setStarting(false)
     navigate('/walk')
   }
@@ -100,6 +103,8 @@ export function StartWalkPage() {
           ))}
         </Select>
 
+        <RoutePicker onRouteChange={setPlannedRoute} />
+
         <div>
           <div className="flex items-end gap-2">
             <div className="flex-1">
@@ -109,7 +114,7 @@ export function StartWalkPage() {
                 min={intervalUnit === 'minutes' ? 1 : MIN_INTERVAL_SECONDS}
                 step={intervalUnit === 'minutes' ? 1 : 5}
                 value={intervalValue}
-                onChange={(e) => setIntervalValue(Number(e.target.value))}
+                onChange={(e) => setIntervalValue(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </div>
             <div className="flex gap-1.5 pb-0.5">
