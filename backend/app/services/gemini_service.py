@@ -28,20 +28,10 @@ def _ensure_configured() -> None:
         _configured = True
 
 
-def _location_label(context: dict) -> str:
-    if context.get("location_label"):
-        return context["location_label"]
-    lat, lng = context.get("lat"), context.get("lng")
-    if lat is None or lng is None:
-        return "location unavailable"
-    return f"{lat:.5f}, {lng:.5f}"
-
-
 def _fallback_summary(context: dict) -> str:
     parts = [
         f"Level {context['level']} alert: no check-in response for "
         f"{context['minutes_since_response']} min.",
-        f"Last known location: {_location_label(context)}.",
     ]
     if context.get("is_stationary"):
         parts.append("She has not moved from this spot.")
@@ -52,14 +42,16 @@ def _build_prompt(context: dict) -> str:
     return f"""You are generating a short safety alert for a trusted contact. Someone using a
 safety walking app has missed check-ins. Write 1-2 plain, calm, factual sentences
 summarizing the situation for the contact. No preamble, no bullet points, no markdown
--- just the sentences, ready to read as-is.
+-- just the sentences, ready to read as-is. Do not mention or invent coordinates,
+an address, or any location details -- the contact gets a separate tappable map
+link with the exact location, so the summary should focus only on the timing and
+movement facts below.
 
 Facts:
 - Escalation level just triggered: {context['level']} (2 = primary contact, 3 = emergency contact)
 - Minutes since her last check-in response: {context['minutes_since_response']}
 - Is she currently stationary (hasn't moved): {context['is_stationary']}
 - Minutes since she last moved (only meaningful if stationary): {context.get('minutes_since_movement', 'n/a')}
-- Last known location: {_location_label(context)}
 - Minutes elapsed since she started this walk: {context['minutes_into_walk']}
 """
 
@@ -67,9 +59,10 @@ Facts:
 async def generate_escalation_summary(context: dict) -> str:
     """Returns a short plain-language summary for a contact alert.
 
-    `context` keys: level, minutes_since_response, is_stationary,
-    minutes_since_movement (optional), lat, lng, location_label (optional),
-    minutes_into_walk.
+    `context` keys used here: level, minutes_since_response, is_stationary,
+    minutes_since_movement (optional), minutes_into_walk. Deliberately no
+    location -- that's delivered separately as a tappable map link (see
+    session_service._notify_contact()), not narrated in this text.
     """
     _ensure_configured()
     if not settings.gemini_api_key:

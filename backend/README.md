@@ -97,8 +97,7 @@ readable text, per the handoff doc's explicit fallback requirement.
 When a session escalates to Level 2 or 3, `session_service._notify_contact()`
 texts the relevant contact (primary at 2, emergency at 3) via
 [TextBelt](https://textbelt.com) (`app/services/textbelt_service.py`) with the
-Gemini summary plus the public `share_url`. Same fallback philosophy as
-Gemini: if TextBelt isn't configured or the send fails, the escalation still
+Gemini summary. Same fallback philosophy as Gemini: if TextBelt isn't configured or the send fails, the escalation still
 proceeds and the alert is still visible via the public link — a broken
 delivery integration never blocks the state machine. Each attempt is logged
 to `check_in_logs` as `sms_sent` / `sms_not_sent`.
@@ -113,11 +112,30 @@ sending disabled — alerts still generate and are visible via the public link
 either way (logged as `sms_not_sent`, escalation still proceeds).
 
 **The text body does not include the `share_url`.** TextBelt rejects any
-message containing a URL from an unverified key ("ability to send URLs via
-text is limited to verified accounts") — confirmed against the real API.
-Verification is a manual review (email support@textbelt.com or use the link
-`https://textbelt.com/whitelist?key=...` returns). Until the key is verified,
-the SMS is level + plain-language summary only; the link itself still works
-and is still returned by both status endpoints, it just isn't texted
-automatically. Once verified, add the link back into the body built in
-`session_service._notify_contact()`.
+message containing a domain-shaped pattern (`google.com`, `maps.apple.com`,
+etc.) from an unverified key ("ability to send URLs via text is limited to
+verified accounts") — confirmed against the real API, and it doesn't matter
+whether the scheme is `https://`, `www.`, or missing entirely; any
+`word.tld` shape gets blocked. Verification is a manual review (email
+support@textbelt.com or use the link `https://textbelt.com/whitelist?key=...`
+returns). Until the key is verified, the SMS carries the Gemini summary plus
+an `Open in Maps: maps://?ll=<lat>,<lng>` line instead of a real link — see
+below for why that one line gets through. Once verified, the `share_url`
+could be added back into the body built in `session_service._notify_contact()`.
+
+**The Maps link uses `maps://`, Apple's own scheme, instead of an `https://`
+Google/Apple Maps URL.** `maps://` has no dot+TLD shape, so it isn't caught
+by TextBelt's filter (confirmed: `https://maps.apple.com/...` and
+`https://www.google.com/maps/...` are both blocked, `maps://?ll=lat,lng` is
+not). Confirmed on a real device that iOS Messages renders it as a tappable
+link that opens Apple Maps at that location. Android's equivalent would be a
+`geo:lat,lng?q=lat,lng` URI (also unblocked in testing), not currently used
+since the app's target device wasn't confirmed as Android.
+
+**Gemini's summary never mentions location at all** — `gemini_service.py`'s
+prompt explicitly tells it not to invent coordinates or an address, since the
+`maps://` link is the only thing meant to carry location in the SMS. An
+earlier version reverse-geocoded lat/lng into a postal address (via
+OpenStreetMap's Nominatim) purely to make Gemini's sentence read naturally
+("...along University Drive..."), but that's been removed along with the
+geocoding service now that location is link-only.
