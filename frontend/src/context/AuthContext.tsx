@@ -30,12 +30,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function signUp(email: string, password: string) {
-    const { error } = await api.auth.signUp(email, password)
+    const { data, error } = await api.auth.signUp(email, password)
+    if (data.session) setSession(data.session)
     return { error: error?.message ?? null }
   }
 
   async function signIn(email: string, password: string) {
-    const { error } = await api.auth.signInWithPassword(email, password)
+    const { data, error } = await api.auth.signInWithPassword(email, password)
+    if (data.session) setSession(data.session)
     return { error: error?.message ?? null }
   }
 
