@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ContactCard } from '../components/ContactCard'
 import { ContactForm } from '../components/ContactForm'
 import { Spinner } from '../components/ui/Spinner'
@@ -79,9 +79,14 @@ export function ContactsPage() {
         {emergency.length === 0 && <ContactForm type="emergency" onSubmit={handleAdd} />}
       </section>
 
-      <button type="button" className="mt-10 text-sm font-medium text-slate-500" onClick={handleLogout}>
-        Log out
-      </button>
+      <div className="mt-10 flex items-center gap-4">
+        <Link to="/settings" className="text-sm font-medium text-slate-500">
+          Settings
+        </Link>
+        <button type="button" className="text-sm font-medium text-slate-500" onClick={handleLogout}>
+          Log out
+        </button>
+      </div>
     </div>
   )
 }

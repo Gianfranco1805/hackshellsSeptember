@@ -33,6 +33,7 @@ export interface WalkSession {
 export interface AppUser {
   id: string
   email: string
+  display_name: string | null
   created_at: string
 }
 
