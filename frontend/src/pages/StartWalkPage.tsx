@@ -6,11 +6,12 @@ import { Spinner } from '../components/ui/Spinner'
 import { TextInput } from '../components/ui/TextInput'
 import { useAuth } from '../context/AuthContext'
 import { useWalkSession } from '../context/WalkSessionContext'
-import { INTERVAL_OPTIONS } from '../lib/constants'
 import { api } from '../mock-api'
 import type { Contact } from '../types'
 
 const MIN_INTERVAL_SECONDS = 10
+
+type IntervalUnit = 'seconds' | 'minutes'
 
 export function StartWalkPage() {
   const { user } = useAuth()
@@ -20,7 +21,8 @@ export function StartWalkPage() {
   const [loading, setLoading] = useState(true)
   const [primaryContactId, setPrimaryContactId] = useState('')
   const [emergencyContactId, setEmergencyContactId] = useState('')
-  const [intervalSeconds, setIntervalSeconds] = useState<number>(INTERVAL_OPTIONS[0].seconds)
+  const [intervalValue, setIntervalValue] = useState(20)
+  const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('seconds')
   const [starting, setStarting] = useState(false)
 
   useEffect(() => {
@@ -35,7 +37,15 @@ export function StartWalkPage() {
 
   const primaryOptions = contacts.filter((c) => c.type === 'primary')
   const emergencyOptions = contacts.filter((c) => c.type === 'emergency')
+  const intervalSeconds = intervalUnit === 'minutes' ? intervalValue * 60 : intervalValue
   const canStart = Boolean(primaryContactId && emergencyContactId && intervalSeconds >= MIN_INTERVAL_SECONDS)
+
+  function handleUnitChange(unit: IntervalUnit) {
+    if (unit === intervalUnit) return
+    // Convert the typed value so the underlying seconds stay roughly the same across the unit switch.
+    setIntervalValue(unit === 'minutes' ? Math.max(1, Math.round(intervalValue / 60)) : intervalValue * 60)
+    setIntervalUnit(unit)
+  }
 
   async function handleStart() {
     setStarting(true)
@@ -91,30 +101,39 @@ export function StartWalkPage() {
         </Select>
 
         <div>
-          <TextInput
-            label="Check-in interval (seconds)"
-            type="number"
-            min={MIN_INTERVAL_SECONDS}
-            step={5}
-            value={intervalSeconds}
-            onChange={(e) => setIntervalSeconds(Number(e.target.value))}
-          />
-          <div className="mt-2 flex flex-wrap gap-2">
-            {INTERVAL_OPTIONS.map((opt) => (
-              <button
-                key={opt.seconds}
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <TextInput
+                label="Check-in interval"
+                type="number"
+                min={intervalUnit === 'minutes' ? 1 : MIN_INTERVAL_SECONDS}
+                step={intervalUnit === 'minutes' ? 1 : 5}
+                value={intervalValue}
+                onChange={(e) => setIntervalValue(Number(e.target.value))}
+              />
+            </div>
+            <div className="flex gap-1.5 pb-0.5">
+              <Button
                 type="button"
-                onClick={() => setIntervalSeconds(opt.seconds)}
-                className={`rounded-full border px-3 py-1 text-sm ${
-                  intervalSeconds === opt.seconds
-                    ? 'border-gold bg-gold-light text-navy'
-                    : 'border-slate-300 text-slate-600'
-                }`}
+                size="pill"
+                variant={intervalUnit === 'seconds' ? 'primary' : 'secondary'}
+                onClick={() => handleUnitChange('seconds')}
               >
-                {opt.label}
-              </button>
-            ))}
+                Sec
+              </Button>
+              <Button
+                type="button"
+                size="pill"
+                variant={intervalUnit === 'minutes' ? 'primary' : 'secondary'}
+                onClick={() => handleUnitChange('minutes')}
+              >
+                Min
+              </Button>
+            </div>
           </div>
+          {intervalSeconds < MIN_INTERVAL_SECONDS && (
+            <p className="mt-1 text-sm text-red-600">Interval must be at least {MIN_INTERVAL_SECONDS} seconds.</p>
+          )}
         </div>
 
         <Button onClick={handleStart} disabled={!canStart || starting}>
