@@ -92,23 +92,6 @@ If `GEMINI_API_KEY` is unset, the call errors, or it takes longer than 6s,
 same structured context instead of raising — an alert always has *some*
 readable text, per the handoff doc's explicit fallback requirement.
 
-## Location label (reverse geocoding)
-
-Before generating a Level 2/3 summary, `session_service.reevaluate_session()`
-calls `app/services/geocoding_service.py::reverse_geocode()` to turn the
-last-known lat/lng into a short address (e.g. "NW 7th St, Miami") via
-[OpenStreetMap's Nominatim](https://nominatim.openstreetmap.org) — free, no
-API key or signup, unlike Google Maps Geocoding (needs a billed key) or
-OpenTripMap (needs a key request and is POI-oriented, not built for address
-lookup). The result populates `location_label` in the context passed to
-Gemini, which already preferred that field over raw coordinates
-(`gemini_service.py::_location_label`) but never had it populated before now.
-
-Same fallback philosophy as everywhere else: a failed or slow (>4s) lookup
-returns `None` and the summary just falls back to raw coordinates instead of
-blocking escalation. No Maps link is added anywhere in the SMS — see the
-TextBelt section above for why.
-
 ## Alert delivery (SMS via TextBelt)
 
 When a session escalates to Level 2 or 3, `session_service._notify_contact()`
@@ -133,7 +116,34 @@ message containing a URL from an unverified key ("ability to send URLs via
 text is limited to verified accounts") — confirmed against the real API.
 Verification is a manual review (email support@textbelt.com or use the link
 `https://textbelt.com/whitelist?key=...` returns). Until the key is verified,
-the SMS is level + plain-language summary only; the link itself still works
-and is still returned by both status endpoints, it just isn't texted
-automatically. Once verified, add the link back into the body built in
+the SMS carries the Gemini summary plus a `Last known location: <address>`
+line (see below) instead of a link; the link itself still works and is
+still returned by both status endpoints, it just isn't texted automatically.
+Once verified, add the link back into the body built in
 `session_service._notify_contact()`.
+
+## Location label (reverse geocoding)
+
+Before generating a Level 2/3 summary, `session_service.reevaluate_session()`
+calls `app/services/geocoding_service.py::reverse_geocode()` to turn the
+last-known lat/lng into a full postal-style address (e.g. "11200 Southwest
+8th Street, Miami, Florida 33199") via
+[OpenStreetMap's Nominatim](https://nominatim.openstreetmap.org) — free, no
+API key or signup, unlike Google Maps Geocoding (needs a billed key) or
+OpenTripMap (needs a key request and is POI-oriented, not built for address
+lookup). The result populates `location_label` in the context passed to
+Gemini, which already preferred that field over raw coordinates
+(`gemini_service.py::_location_label`) but never had it populated before now,
+and is also appended to the SMS body as its own `Last known location:` line
+by `_notify_contact()`.
+
+The address is deliberately full postal format (house number, street, city,
+state, zip), not a short "street, city" label: iOS Messages and Android
+Messages both auto-detect a well-formed postal address in plain text and
+make it tappable to open in the phone's default Maps app — no actual
+http(s) link required. That's what makes it "openable" from the SMS despite
+TextBelt's URL restriction (see above) — a plain address string isn't a URL.
+
+Same fallback philosophy as everywhere else: a failed or slow (>4s) lookup
+returns `None` and the summary/SMS just fall back to raw coordinates instead
+of blocking escalation.

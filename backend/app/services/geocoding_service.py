@@ -1,9 +1,18 @@
 """Reverse geocoding for escalation alerts.
 
-Turns a last-known lat/lng into a short human-readable label (e.g. "NW 7th
-St, Miami") for use in Gemini's alert summary. gemini_service.py already
-prefers a `location_label` context key over raw coordinates
-(`_location_label()`), but nothing ever populated it -- this is that piece.
+Turns a last-known lat/lng into a full mailing-style address (e.g. "11200
+Southwest 8th Street, Miami, Florida 33199") for use in Gemini's alert
+summary and the SMS body. gemini_service.py already prefers a
+`location_label` context key over raw coordinates (`_location_label()`),
+but nothing ever populated it -- this is that piece.
+
+The address is deliberately formatted like a standard postal address rather
+than a short "street, city" label: iOS Messages and Android Messages both
+auto-detect a well-formed postal address in plain text and make it tappable
+to open in the phone's default Maps app -- no actual http(s) link needed.
+That matters here because TextBelt rejects any text containing a real URL
+from an unverified key (see textbelt_service.py) -- a plain address string
+isn't a URL, so it sidesteps that restriction while still being "openable."
 
 Uses OpenStreetMap's Nominatim (https://nominatim.openstreetmap.org) --
 free, no API key or signup, which fits a hackathon timeline (no Google Maps
@@ -27,9 +36,20 @@ NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
 GEOCODE_TIMEOUT_SECONDS = 4
 USER_AGENT = "SafetyWalkingCompanion-Hackathon (https://github.com/Gianfranco1805/hackshellsSeptember)"
 
+# Building-level zoom -- gets us a house_number when one exists nearby,
+# which is what makes the address specific enough for a phone to recognize
+# and tap-to-open. Lower zoom (e.g. 16) tends to only resolve to a bare
+# street name with no house number or city.
+REVERSE_GEOCODE_ZOOM = 18
+
 
 async def reverse_geocode(lat: float, lng: float) -> str | None:
-    """Returns a short address label for (lat, lng), or None on any failure."""
+    """Returns a full postal-style address for (lat, lng), or None on failure.
+
+    Format: "<house_number> <road>, <city>, <state> <postcode>", degrading
+    gracefully (dropping whichever pieces Nominatim didn't return) down to
+    the raw `display_name` if none of the structured fields are present.
+    """
     try:
         async with httpx.AsyncClient(timeout=GEOCODE_TIMEOUT_SECONDS) as client:
             response = await client.get(
@@ -38,7 +58,7 @@ async def reverse_geocode(lat: float, lng: float) -> str | None:
                     "format": "jsonv2",
                     "lat": lat,
                     "lon": lng,
-                    "zoom": 16,
+                    "zoom": REVERSE_GEOCODE_ZOOM,
                     "addressdetails": 1,
                 },
                 headers={"User-Agent": USER_AGENT},
@@ -50,10 +70,15 @@ async def reverse_geocode(lat: float, lng: float) -> str | None:
         return None
 
     address = data.get("address") or {}
-    street = address.get("road") or address.get("suburb") or address.get("neighbourhood")
+    road = address.get("road") or address.get("suburb") or address.get("neighbourhood")
+    street = " ".join(p for p in (address.get("house_number"), road) if p) or road
     city = address.get("city") or address.get("town") or address.get("village")
+    state = address.get("state")
+    postcode = address.get("postcode")
 
-    parts = [p for p in (street, city) if p]
-    if parts:
-        return ", ".join(parts)
-    return data.get("display_name")
+    locality = ", ".join(p for p in (city, state) if p)
+    label = ", ".join(p for p in (street, locality) if p)
+    if postcode and label:
+        label = f"{label} {postcode}"
+
+    return label or data.get("display_name")

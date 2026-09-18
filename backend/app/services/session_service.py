@@ -52,16 +52,22 @@ def get_session_by_share_token(db: Client, share_token: str) -> dict:
     return res.data
 
 
-def _notify_contact(db: Client, session: dict, level: int, alert_summary: str) -> bool | None:
+def _notify_contact(
+    db: Client, session: dict, level: int, alert_summary: str, location_label: str | None = None
+) -> bool | None:
     """Texts the contact for this level (2 -> primary, 3 -> emergency).
 
     Returns True/False for a send attempt, or None if there was no contact
     on file / no phone number to send to.
 
-    No link in the body: TextBelt rejects texts containing a URL from an
-    unverified API key (anti-spam policy) -- see backend/README.md. The
-    share link itself is still available via the public status endpoint;
-    it just isn't delivered inside this text until the key is verified.
+    No http(s) link in the body: TextBelt rejects texts containing a URL
+    from an unverified API key (anti-spam policy) -- see backend/README.md.
+    The share link itself is still available via the public status
+    endpoint; it just isn't delivered inside this text until the key is
+    verified. `location_label`, when present, is a full postal-style
+    address (see geocoding_service.py) on its own line -- that's plain
+    text, not a URL, so TextBelt accepts it, and iOS/Android Messages will
+    still auto-detect it and make it tappable to open in Maps.
     """
     contact_id = session.get(CONTACT_FIELD_BY_LEVEL.get(level, ""))
     if not contact_id:
@@ -73,6 +79,8 @@ def _notify_contact(db: Client, session: dict, level: int, alert_summary: str) -
         return None
 
     body = f"Safety alert (Level {level}): {alert_summary}"
+    if location_label:
+        body += f"\nLast known location: {location_label}"
     return send_escalation_sms(contact["phone"], body)
 
 
@@ -129,12 +137,13 @@ async def reevaluate_session(db: Client, session: dict) -> tuple[dict, str | Non
 
         sms_sent = None
         if result.new_level in (2, 3):
+            location_label = None
             if context["lat"] is not None and context["lng"] is not None:
                 location_label = await reverse_geocode(context["lat"], context["lng"])
                 if location_label:
                     context["location_label"] = location_label
             alert_summary = await generate_escalation_summary(context)
-            sms_sent = _notify_contact(db, session, result.new_level, alert_summary)
+            sms_sent = _notify_contact(db, session, result.new_level, alert_summary, location_label)
         elif result.new_level == 4:
             alert_summary = (
                 "SIMULATED: this walk would now escalate to emergency services. "
