@@ -28,6 +28,9 @@ export interface WalkSession {
   emergency_contact_id: string
   status: WalkStatus
   started_at: string
+  seconds_until_next_escalation?: number | null
+  alert_summary?: string | null
+  share_url?: string | null
 }
 
 export interface AppUser {

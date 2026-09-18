@@ -4,6 +4,7 @@ import type { WalkSession } from '../types'
 import { useAuth } from './AuthContext'
 
 const POLL_INTERVAL_MS = 3000
+const LOCATION_REPORT_INTERVAL_MS = 15000
 
 interface WalkSessionContextValue {
   session: WalkSession | null
@@ -13,9 +14,6 @@ interface WalkSessionContextValue {
   submitCheckIn: () => Promise<void>
   endWalk: () => Promise<void>
   clearEndedWalk: () => void
-  forceMissedCheckIn: () => Promise<void>
-  toggleStationary: () => Promise<void>
-  resetWalk: () => Promise<void>
 }
 
 const WalkSessionContext = createContext<WalkSessionContextValue | null>(null)
@@ -26,6 +24,7 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [resolvedAt, setResolvedAt] = useState<number | null>(null)
   const pollRef = useRef<number | null>(null)
+  const locationRef = useRef<number | null>(null)
 
   const clearPoll = useCallback(() => {
     if (pollRef.current !== null) {
@@ -34,14 +33,45 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const pollStatus = useCallback((sessionId: string) => {
+  const pollStatus = useCallback((walkId: string) => {
     clearPoll()
     pollRef.current = window.setInterval(async () => {
-      const updated = await api.walkSessions.getSessionStatus(sessionId)
+      const updated = await api.walkSessions.getWalkStatus(walkId)
       setSession(updated)
       if (updated.status !== 'active') clearPoll()
     }, POLL_INTERVAL_MS)
   }, [clearPoll])
+
+  const clearLocationReporting = useCallback(() => {
+    if (locationRef.current !== null) {
+      window.clearInterval(locationRef.current)
+      locationRef.current = null
+    }
+  }, [])
+
+  // GPS pings feed the backend's stillness check (see PROJECT_HANDOFF.md
+  // section 4) -- without them a walk never reports movement and escalation
+  // timing degrades to elapsed-silence only.
+  const startLocationReporting = useCallback((walkId: string) => {
+    clearLocationReporting()
+    if (!navigator.geolocation) return
+    const report = () => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          api.walkSessions.reportLocation(walkId, position.coords.latitude, position.coords.longitude).catch(() => {
+            // Never block the walk on a failed location report.
+          })
+        },
+        () => {
+          // Permission denied or unavailable -- escalation still runs off
+          // elapsed silence alone.
+        },
+        { enableHighAccuracy: true, timeout: 8000 },
+      )
+    }
+    report()
+    locationRef.current = window.setInterval(report, LOCATION_REPORT_INTERVAL_MS)
+  }, [clearLocationReporting])
 
   useEffect(() => {
     if (!user) {
@@ -49,20 +79,27 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return
     }
-    api.walkSessions.getActiveSessionForUser(user.id).then((active) => {
+    api.walkSessions.getActiveSessionForUser().then((active) => {
       setSession(active)
       setLoading(false)
-      if (active && active.status === 'active') pollStatus(active.session_id)
+      if (active && active.status === 'active') {
+        pollStatus(active.session_id)
+        startLocationReporting(active.session_id)
+      }
     })
-    return () => clearPoll()
-  }, [user, pollStatus, clearPoll])
+    return () => {
+      clearPoll()
+      clearLocationReporting()
+    }
+  }, [user, pollStatus, clearPoll, startLocationReporting, clearLocationReporting])
 
   async function startWalk(input: { primaryContactId: string; emergencyContactId: string; checkInIntervalSeconds: number }) {
     if (!user) return
-    const created = await api.walkSessions.startWalk({ userId: user.id, ...input })
+    const created = await api.walkSessions.startWalk(input)
     setSession(created)
     setResolvedAt(null)
     pollStatus(created.session_id)
+    startLocationReporting(created.session_id)
   }
 
   async function submitCheckIn() {
@@ -77,27 +114,12 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
     setSession(updated)
     setResolvedAt(Date.now())
     clearPoll()
+    clearLocationReporting()
   }
 
   function clearEndedWalk() {
     setSession(null)
     setResolvedAt(null)
-  }
-
-  async function forceMissedCheckIn() {
-    if (!session) return
-    setSession(await api.walkSessions.__forceMissedCheckIn(session.session_id))
-  }
-
-  async function toggleStationary() {
-    if (!session) return
-    setSession(await api.walkSessions.__toggleStationary(session.session_id))
-  }
-
-  async function resetWalk() {
-    if (!session) return
-    setSession(await api.walkSessions.__resetWalk(session.session_id))
-    pollStatus(session.session_id)
   }
 
   return (
@@ -110,9 +132,6 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
         submitCheckIn,
         endWalk,
         clearEndedWalk,
-        forceMissedCheckIn,
-        toggleStationary,
-        resetWalk,
       }}
     >
       {children}

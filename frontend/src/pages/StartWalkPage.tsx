@@ -9,7 +9,9 @@ import { useWalkSession } from '../context/WalkSessionContext'
 import { api } from '../mock-api'
 import type { Contact } from '../types'
 
-const MIN_INTERVAL_SECONDS = 10
+// Backend enforces check_in_interval_seconds > 30 (see WalkStartRequest in
+// backend/app/schemas.py).
+const MIN_INTERVAL_SECONDS = 31
 
 type IntervalUnit = 'seconds' | 'minutes'
 
@@ -21,7 +23,7 @@ export function StartWalkPage() {
   const [loading, setLoading] = useState(true)
   const [primaryContactId, setPrimaryContactId] = useState('')
   const [emergencyContactId, setEmergencyContactId] = useState('')
-  const [intervalValue, setIntervalValue] = useState(20)
+  const [intervalValue, setIntervalValue] = useState(45)
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('seconds')
   const [starting, setStarting] = useState(false)
 

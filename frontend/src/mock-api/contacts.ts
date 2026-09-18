@@ -1,26 +1,23 @@
-import { delay, generateId, store, STORAGE_KEYS } from './client'
+import { apiDelete, apiGet, apiPost, apiPut } from '../lib/apiClient'
 import type { Contact, ContactType } from '../types'
 
-export async function listContacts(userId: string): Promise<Contact[]> {
-  await delay()
-  return store.read<Contact>(STORAGE_KEYS.contacts).filter((c) => c.user_id === userId)
+// The backend derives the owner from the JWT, not a body/query param -- the
+// userId args below are kept only so callers (ContactsPage, StartWalkPage)
+// don't need to change.
+
+let cache: Contact[] | null = null
+
+export async function listContacts(_userId: string): Promise<Contact[]> {
+  cache = await apiGet<Contact[]>('/contacts')
+  return cache
 }
 
 export async function addContact(
-  userId: string,
+  _userId: string,
   input: { name: string; phone: string; type: ContactType },
 ): Promise<Contact> {
-  await delay()
-  const contacts = store.read<Contact>(STORAGE_KEYS.contacts)
-  const contact: Contact = {
-    id: generateId('contact'),
-    user_id: userId,
-    name: input.name,
-    phone: input.phone,
-    type: input.type,
-    created_at: new Date().toISOString(),
-  }
-  store.write(STORAGE_KEYS.contacts, [...contacts, contact])
+  const contact = await apiPost<Contact>('/contacts', input)
+  cache = cache ? [...cache, contact] : [contact]
   return contact
 }
 
@@ -28,26 +25,19 @@ export async function updateContact(
   id: string,
   updates: Partial<Pick<Contact, 'name' | 'phone'>>,
 ): Promise<Contact> {
-  await delay()
-  const contacts = store.read<Contact>(STORAGE_KEYS.contacts)
-  const index = contacts.findIndex((c) => c.id === id)
-  if (index === -1) throw new Error('Contact not found')
-  const updated = { ...contacts[index], ...updates }
-  contacts[index] = updated
-  store.write(STORAGE_KEYS.contacts, contacts)
-  return updated
+  const contact = await apiPut<Contact>(`/contacts/${id}`, updates)
+  cache = cache ? cache.map((c) => (c.id === id ? contact : c)) : [contact]
+  return contact
 }
 
 export async function deleteContact(id: string): Promise<void> {
-  await delay()
-  const contacts = store.read<Contact>(STORAGE_KEYS.contacts)
-  store.write(
-    STORAGE_KEYS.contacts,
-    contacts.filter((c) => c.id !== id),
-  )
+  await apiDelete(`/contacts/${id}`)
+  cache = cache ? cache.filter((c) => c.id !== id) : null
 }
 
 export async function getContactById(id: string): Promise<Contact | null> {
-  await delay(50, 150)
-  return store.read<Contact>(STORAGE_KEYS.contacts).find((c) => c.id === id) ?? null
+  const hit = cache?.find((c) => c.id === id)
+  if (hit) return hit
+  const contacts = await listContacts('')
+  return contacts.find((c) => c.id === id) ?? null
 }

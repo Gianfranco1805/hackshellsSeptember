@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckInModal } from '../components/CheckInModal'
-import { DemoControls } from '../components/DemoControls'
 import { EscalationBanner } from '../components/EscalationBanner'
 import { ShieldIcon } from '../components/icons'
 import { Button } from '../components/ui/Button'
@@ -72,7 +71,8 @@ export function ActiveWalkPage() {
 
   async function handleCopyLink() {
     if (!session) return
-    await navigator.clipboard.writeText(`${window.location.origin}/contact/${session.session_id}`)
+    const link = session.share_url ?? `${window.location.origin}/contact/${session.session_id}`
+    await navigator.clipboard.writeText(link)
     setLinkCopied(true)
     setTimeout(() => setLinkCopied(false), 2000)
   }
@@ -150,8 +150,6 @@ export function ActiveWalkPage() {
       <Button variant="secondary" className="mt-3" onClick={handleCopyLink}>
         {linkCopied ? 'Link copied!' : 'Copy contact link'}
       </Button>
-
-      <DemoControls />
 
       <CheckInModal open={isOverdue && session.current_level < 4} onConfirm={submitCheckIn} />
     </div>
