@@ -26,13 +26,14 @@ function getSummaryText(session: WalkSession): string {
 }
 
 export function ContactViewPage() {
-  const { sessionId } = useParams<{ sessionId: string }>()
+  const { shareToken, sessionId } = useParams<{ shareToken?: string; sessionId?: string }>()
+  const token = shareToken ?? sessionId
   const [session, setSession] = useState<WalkSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!token) {
       setNotFound(true)
       setLoading(false)
       return
@@ -42,7 +43,7 @@ export function ContactViewPage() {
 
     async function fetchStatus() {
       try {
-        const data = await api.walkSessions.getSessionStatus(sessionId!)
+        const data = await api.walkSessions.getSessionStatus(token!)
         if (isMounted) {
           setSession(data)
           setNotFound(false)
@@ -64,7 +65,7 @@ export function ContactViewPage() {
       isMounted = false
       clearInterval(interval)
     }
-  }, [sessionId])
+  }, [token])
 
   if (loading) {
     return (
