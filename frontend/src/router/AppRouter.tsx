@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { BottomNav } from '../components/BottomNav'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { ActiveWalkPage } from '../pages/ActiveWalkPage'
+import { ContactViewPage } from '../pages/ContactViewPage'
 import { ContactsPage } from '../pages/ContactsPage'
 import { LoginPage } from '../pages/LoginPage'
 import { SignUpPage } from '../pages/SignUpPage'
@@ -21,6 +22,8 @@ export function AppRouter() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignUpPage />} />
+      <Route path="/status/:shareToken" element={<ContactViewPage />} />
+      <Route path="/contact/:sessionId" element={<ContactViewPage />} />
       <Route
         path="/contacts"
         element={

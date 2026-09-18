@@ -20,7 +20,7 @@ export function StartWalkPage() {
   const [loading, setLoading] = useState(true)
   const [primaryContactId, setPrimaryContactId] = useState('')
   const [emergencyContactId, setEmergencyContactId] = useState('')
-  const [intervalSeconds, setIntervalSeconds] = useState(INTERVAL_OPTIONS[0].seconds)
+  const [intervalSeconds, setIntervalSeconds] = useState<number>(INTERVAL_OPTIONS[0].seconds)
   const [starting, setStarting] = useState(false)
 
   useEffect(() => {
