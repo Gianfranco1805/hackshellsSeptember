@@ -46,3 +46,8 @@ export async function deleteContact(id: string): Promise<void> {
     contacts.filter((c) => c.id !== id),
   )
 }
+
+export async function getContactById(id: string): Promise<Contact | null> {
+  await delay(50, 150)
+  return store.read<Contact>(STORAGE_KEYS.contacts).find((c) => c.id === id) ?? null
+}

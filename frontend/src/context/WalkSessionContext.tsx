@@ -8,9 +8,11 @@ const POLL_INTERVAL_MS = 3000
 interface WalkSessionContextValue {
   session: WalkSession | null
   loading: boolean
+  resolvedAt: number | null
   startWalk: (input: { primaryContactId: string; emergencyContactId: string; checkInIntervalSeconds: number }) => Promise<void>
   submitCheckIn: () => Promise<void>
   endWalk: () => Promise<void>
+  clearEndedWalk: () => void
   forceMissedCheckIn: () => Promise<void>
   toggleStationary: () => Promise<void>
   resetWalk: () => Promise<void>
@@ -22,6 +24,7 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [session, setSession] = useState<WalkSession | null>(null)
   const [loading, setLoading] = useState(true)
+  const [resolvedAt, setResolvedAt] = useState<number | null>(null)
   const pollRef = useRef<number | null>(null)
 
   const clearPoll = useCallback(() => {
@@ -58,6 +61,7 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
     if (!user) return
     const created = await api.walkSessions.startWalk({ userId: user.id, ...input })
     setSession(created)
+    setResolvedAt(null)
     pollStatus(created.session_id)
   }
 
@@ -71,7 +75,13 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
     if (!session) return
     const updated = await api.walkSessions.endWalk(session.session_id)
     setSession(updated)
+    setResolvedAt(Date.now())
     clearPoll()
+  }
+
+  function clearEndedWalk() {
+    setSession(null)
+    setResolvedAt(null)
   }
 
   async function forceMissedCheckIn() {
@@ -92,7 +102,18 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
 
   return (
     <WalkSessionContext.Provider
-      value={{ session, loading, startWalk, submitCheckIn, endWalk, forceMissedCheckIn, toggleStationary, resetWalk }}
+      value={{
+        session,
+        loading,
+        resolvedAt,
+        startWalk,
+        submitCheckIn,
+        endWalk,
+        clearEndedWalk,
+        forceMissedCheckIn,
+        toggleStationary,
+        resetWalk,
+      }}
     >
       {children}
     </WalkSessionContext.Provider>
