@@ -55,7 +55,7 @@ export function StartWalkPage() {
   if (!canStart && primaryOptions.length === 0 && emergencyOptions.length === 0) {
     return (
       <div className="mx-auto max-w-md px-4 pb-24 pt-6 text-center">
-        <h1 className="mb-3 text-2xl font-semibold text-slate-900">Start a walk</h1>
+        <h1 className="mb-3 text-2xl font-semibold text-navy">Start a walk</h1>
         <p className="mb-6 text-slate-600">
           Add a primary and an emergency contact first, then come back here to start a walk.
         </p>
@@ -66,7 +66,7 @@ export function StartWalkPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pb-24 pt-6">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Start a walk</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-navy">Start a walk</h1>
       <div className="flex flex-col gap-4">
         <Select label="Primary contact" value={primaryContactId} onChange={(e) => setPrimaryContactId(e.target.value)}>
           <option value="" disabled>
@@ -107,7 +107,7 @@ export function StartWalkPage() {
                 onClick={() => setIntervalSeconds(opt.seconds)}
                 className={`rounded-full border px-3 py-1 text-sm ${
                   intervalSeconds === opt.seconds
-                    ? 'border-violet-500 bg-violet-100 text-violet-700'
+                    ? 'border-gold bg-gold-light text-navy'
                     : 'border-slate-300 text-slate-600'
                 }`}
               >

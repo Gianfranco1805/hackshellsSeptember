@@ -11,7 +11,7 @@ export function TextInput({ label, id, className = '', ...props }: TextInputProp
       <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
       <input
         id={inputId}
-        className={`w-full min-h-11 rounded-lg border border-slate-300 px-3 py-2 text-base focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-200 ${className}`}
+        className={`w-full min-h-11 rounded-2xl border border-slate-300 px-3 py-2 text-base focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy-light/30 ${className}`}
         {...props}
       />
     </label>

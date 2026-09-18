@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { TextInput } from '../components/ui/TextInput'
 import { useAuth } from '../context/AuthContext'
 
 export function SettingsPage() {
-  const { user, updateDisplayName } = useAuth()
+  const { user, updateDisplayName, signOut } = useAuth()
+  const navigate = useNavigate()
   const [displayName, setDisplayName] = useState(user?.display_name ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -24,9 +26,14 @@ export function SettingsPage() {
     }
   }
 
+  async function handleLogout() {
+    await signOut()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <div className="mx-auto max-w-md px-4 pb-24 pt-6">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Settings</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-navy">Settings</h1>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <TextInput
@@ -43,6 +50,10 @@ export function SettingsPage() {
       </form>
 
       <p className="mt-6 text-sm text-slate-500">Signed in as {user?.email}</p>
+
+      <button type="button" className="mt-10 text-sm font-medium text-slate-500" onClick={handleLogout}>
+        Log out
+      </button>
     </div>
   )
 }

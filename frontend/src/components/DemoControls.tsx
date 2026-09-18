@@ -21,13 +21,13 @@ export function DemoControls() {
       {open && (
         <div className="mt-3 flex flex-col gap-2">
           <p className="text-xs text-slate-500">Stationary: {session.is_stationary ? 'yes' : 'no'}</p>
-          <button type="button" className="text-sm text-violet-600" onClick={toggleStationary}>
+          <button type="button" className="text-sm text-navy" onClick={toggleStationary}>
             Toggle stationary
           </button>
-          <button type="button" className="text-sm text-violet-600" onClick={forceMissedCheckIn}>
+          <button type="button" className="text-sm text-navy" onClick={forceMissedCheckIn}>
             Force missed check-in
           </button>
-          <button type="button" className="text-sm text-violet-600" onClick={resetWalk}>
+          <button type="button" className="text-sm text-navy" onClick={resetWalk}>
             Reset walk
           </button>
         </div>

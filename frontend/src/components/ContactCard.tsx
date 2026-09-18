@@ -11,6 +11,15 @@ interface ContactCardProps {
   onDelete: (id: string) => Promise<void>
 }
 
+function initials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('')
+}
+
 export function ContactCard({ contact, onUpdate, onDelete }: ContactCardProps) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(contact.name)
@@ -54,13 +63,16 @@ export function ContactCard({ contact, onUpdate, onDelete }: ContactCardProps) {
   }
 
   return (
-    <Card className="flex items-center justify-between gap-3">
-      <div>
-        <p className="font-medium text-slate-900">{contact.name}</p>
-        <p className="text-sm text-slate-600">{contact.phone}</p>
+    <Card className="flex items-center gap-3">
+      <div className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-navy/10 text-sm font-semibold text-navy">
+        {initials(contact.name)}
       </div>
-      <div className="flex gap-2">
-        <button type="button" className="text-sm font-medium text-violet-600" onClick={() => setEditing(true)} disabled={busy}>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-navy">{contact.name}</p>
+        <p className="truncate text-sm text-slate-600">{contact.phone}</p>
+      </div>
+      <div className="flex flex-none gap-3">
+        <button type="button" className="text-sm font-medium text-navy" onClick={() => setEditing(true)} disabled={busy}>
           Edit
         </button>
         <button type="button" className="text-sm font-medium text-red-600" onClick={handleDelete} disabled={busy}>

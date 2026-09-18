@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { ContactCard } from '../components/ContactCard'
 import { ContactForm } from '../components/ContactForm'
 import { Spinner } from '../components/ui/Spinner'
@@ -8,8 +7,7 @@ import { api } from '../mock-api'
 import type { Contact, ContactType } from '../types'
 
 export function ContactsPage() {
-  const { user, signOut } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -37,11 +35,6 @@ export function ContactsPage() {
     setContacts((prev) => prev.filter((c) => c.id !== id))
   }
 
-  async function handleLogout() {
-    await signOut()
-    navigate('/login', { replace: true })
-  }
-
   if (loading) {
     return (
       <div className="flex min-h-svh items-center justify-center">
@@ -55,10 +48,10 @@ export function ContactsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pb-24 pt-6">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Contacts</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-navy">Contacts</h1>
 
       <section className="mb-8">
-        <h2 className="mb-3 text-lg font-medium text-slate-800">Primary contact</h2>
+        <h2 className="mb-3 text-lg font-medium text-navy">Primary contact</h2>
         <div className="mb-4 flex flex-col gap-3">
           {primary.length === 0 && <p className="text-sm text-slate-500">No primary contact saved yet.</p>}
           {primary.map((c) => (
@@ -69,7 +62,7 @@ export function ContactsPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-medium text-slate-800">Emergency contact</h2>
+        <h2 className="mb-3 text-lg font-medium text-navy">Emergency contact</h2>
         <div className="mb-4 flex flex-col gap-3">
           {emergency.length === 0 && <p className="text-sm text-slate-500">No emergency contact saved yet.</p>}
           {emergency.map((c) => (
@@ -78,15 +71,6 @@ export function ContactsPage() {
         </div>
         {emergency.length === 0 && <ContactForm type="emergency" onSubmit={handleAdd} />}
       </section>
-
-      <div className="mt-10 flex items-center gap-4">
-        <Link to="/settings" className="text-sm font-medium text-slate-500">
-          Settings
-        </Link>
-        <button type="button" className="text-sm font-medium text-slate-500" onClick={handleLogout}>
-          Log out
-        </button>
-      </div>
     </div>
   )
 }
