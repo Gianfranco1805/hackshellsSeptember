@@ -1,12 +1,19 @@
 import L from 'leaflet'
 import 'leaflet-routing-machine'
+import { matchFiuLandmarks } from './fiuLandmarks'
 import type { PlannedRoute, RoutePoint } from '../types'
 
-// Free public OSRM + Nominatim servers — no API key, no billing, but shared
+// Free public Nominatim + OSRM servers — no API key, no billing, but shared
 // demo infrastructure with light rate limits. Fine for a hackathon demo, not
 // for production traffic.
+//
+// Routing specifically uses FOSSGIS's public OSRM instance (routed-foot),
+// not router.project-osrm.org: that more commonly-cited demo server only has
+// the driving profile compiled — 'foot', 'driving', and even a made-up
+// profile name all silently return the same car-speed route. routed-foot
+// has an actual pedestrian graph (footpaths, campus walkways, no highways).
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
-const OSRM_SERVICE_URL = 'https://router.project-osrm.org/route/v1'
+const OSRM_SERVICE_URL = 'https://routing.openstreetmap.de/routed-foot/route/v1'
 const FIU_ANCHOR = { lat: 25.758, lng: -80.3733 }
 const REQUEST_TIMEOUT_MS = 8000
 
@@ -30,6 +37,11 @@ export async function searchPlaces(query: string, opts: { signal: AbortSignal })
   const trimmed = query.trim()
   if (trimmed.length < 3) return []
 
+  // A handful of FIU spots (parking garages especially) aren't well tagged
+  // in OpenStreetMap and return zero Nominatim results by name, so check the
+  // curated campus list first and merge it ahead of the geocoder's results.
+  const landmarkMatches = matchFiuLandmarks(trimmed)
+
   const params = new URLSearchParams({
     format: 'jsonv2',
     q: trimmed,
@@ -46,12 +58,17 @@ export async function searchPlaces(query: string, opts: { signal: AbortSignal })
     response = await fetch(`${NOMINATIM_URL}?${params.toString()}`, { signal: controller.signal })
   } catch {
     if (opts.signal.aborted) return []
+    if (landmarkMatches.length > 0) return landmarkMatches
     throw new RoutingError('Could not search for that place. Check your connection and try again.')
   }
-  if (!response.ok) throw new RoutingError('Could not search for that place. Check your connection and try again.')
+  if (!response.ok) {
+    if (landmarkMatches.length > 0) return landmarkMatches
+    throw new RoutingError('Could not search for that place. Check your connection and try again.')
+  }
 
   const results = (await response.json()) as NominatimResult[]
-  return results.map((r) => ({ label: r.display_name, lat: Number(r.lat), lng: Number(r.lon) }))
+  const nominatimMatches = results.map((r) => ({ label: r.display_name, lat: Number(r.lat), lng: Number(r.lon) }))
+  return [...landmarkMatches, ...nominatimMatches].slice(0, 5)
 }
 
 export async function fetchRoute(start: RoutePoint, end: RoutePoint): Promise<PlannedRoute> {

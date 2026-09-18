@@ -55,6 +55,8 @@ export function RoutePicker({ onRouteChange }: RoutePickerProps) {
   const [plannedRoute, setPlannedRoute] = useState<PlannedRoute | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
   const [routeError, setRouteError] = useState<string | null>(null)
+  const [locationLoading, setLocationLoading] = useState(false)
+  const [locationError, setLocationError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!startPoint || !endPoint) {
@@ -100,6 +102,26 @@ export function RoutePicker({ onRouteChange }: RoutePickerProps) {
     setArmedField(null)
   }
 
+  function handleUseMyLocation() {
+    if (!navigator.geolocation) {
+      setLocationError('Location services are not available in this browser.')
+      return
+    }
+    setLocationLoading(true)
+    setLocationError(null)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocationLoading(false)
+        setStartPoint({ label: 'Your current location', lat: position.coords.latitude, lng: position.coords.longitude })
+      },
+      (error) => {
+        setLocationLoading(false)
+        setLocationError(error.code === error.PERMISSION_DENIED ? 'Location permission denied.' : 'Could not get your location.')
+      },
+      { enableHighAccuracy: true, timeout: 8000 },
+    )
+  }
+
   return (
     <Card className="flex flex-col gap-3">
       <div>
@@ -108,6 +130,19 @@ export function RoutePicker({ onRouteChange }: RoutePickerProps) {
       </div>
 
       <PointField label="Start" point={startPoint} onClear={() => setStartPoint(null)} onSelect={setStartPoint} />
+      {!startPoint && (
+        <div className="-mt-2 text-left">
+          <button
+            type="button"
+            onClick={handleUseMyLocation}
+            disabled={locationLoading}
+            className="text-sm font-medium text-navy disabled:text-slate-400"
+          >
+            {locationLoading ? 'Getting your location…' : 'Use my current location'}
+          </button>
+          {locationError && <p className="mt-1 text-sm text-red-600">{locationError}</p>}
+        </div>
+      )}
       <PointField label="Destination" point={endPoint} onClear={() => setEndPoint(null)} onSelect={setEndPoint} />
 
       <div className="flex gap-2">
