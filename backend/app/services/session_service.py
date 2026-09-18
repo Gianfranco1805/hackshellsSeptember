@@ -11,7 +11,6 @@ from fastapi import HTTPException
 from supabase import Client
 
 from .escalation import evaluate_escalation, utcnow
-from .geocoding_service import reverse_geocode
 from .gemini_service import generate_escalation_summary
 from .textbelt_service import send_escalation_sms
 
@@ -136,10 +135,6 @@ async def reevaluate_session(db: Client, session: dict) -> tuple[dict, str | Non
 
         sms_sent = None
         if result.new_level in (2, 3):
-            if context["lat"] is not None and context["lng"] is not None:
-                location_label = await reverse_geocode(context["lat"], context["lng"])
-                if location_label:
-                    context["location_label"] = location_label
             alert_summary = await generate_escalation_summary(context)
             sms_sent = _notify_contact(
                 db, session, result.new_level, alert_summary, context["lat"], context["lng"]

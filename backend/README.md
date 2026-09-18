@@ -132,22 +132,10 @@ link that opens Apple Maps at that location. Android's equivalent would be a
 `geo:lat,lng?q=lat,lng` URI (also unblocked in testing), not currently used
 since the app's target device wasn't confirmed as Android.
 
-## Location label (reverse geocoding)
-
-Before generating a Level 2/3 summary, `session_service.reevaluate_session()`
-calls `app/services/geocoding_service.py::reverse_geocode()` to turn the
-last-known lat/lng into a full postal-style address (e.g. "11200 Southwest
-8th Street, Miami, Florida 33199") via
-[OpenStreetMap's Nominatim](https://nominatim.openstreetmap.org) — free, no
-API key or signup, unlike Google Maps Geocoding (needs a billed key) or
-OpenTripMap (needs a key request and is POI-oriented, not built for address
-lookup). The result populates `location_label` in the context passed to
-Gemini, which already preferred that field over raw coordinates
-(`gemini_service.py::_location_label`) but never had it populated before now
-— it's used only for that natural-language sentence (e.g. "...missed her
-check-in ... along University Drive..."), not texted as its own line; the
-`maps://` link (see above) is what carries the actual location in the SMS.
-
-Same fallback philosophy as everywhere else: a failed or slow (>4s) lookup
-returns `None` and the summary just falls back to raw coordinates instead of
-blocking escalation.
+**Gemini's summary never mentions location at all** — `gemini_service.py`'s
+prompt explicitly tells it not to invent coordinates or an address, since the
+`maps://` link is the only thing meant to carry location in the SMS. An
+earlier version reverse-geocoded lat/lng into a postal address (via
+OpenStreetMap's Nominatim) purely to make Gemini's sentence read naturally
+("...along University Drive..."), but that's been removed along with the
+geocoding service now that location is link-only.
