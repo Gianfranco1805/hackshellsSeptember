@@ -1,12 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..config import settings
 from ..db import get_supabase
 from ..dependencies import get_current_user_id
-from ..schemas import LocationUpdate, WalkStartRequest, WalkStatusOut
-from ..services.escalation import utcnow
+from ..schemas import DebugStationaryRequest, LocationUpdate, WalkStartRequest, WalkStatusOut
+from ..services.escalation import GRACE_PERIOD_SECONDS, utcnow
 from ..services.session_service import get_owned_session, reevaluate_session
 
 router = APIRouter(prefix="/walks", tags=["walks"])
@@ -151,3 +151,69 @@ async def resolve_walk(walk_id: str, user_id: str = Depends(get_current_user_id)
     ).execute()
 
     return _to_status_out({**session, **updates})
+
+
+# --- Demo/testing utilities -------------------------------------------------
+# These exist so the escalation flow (including real Gemini summaries and
+# real SMS sends) can be exercised without waiting out real check-in
+# intervals. They don't fake a level directly -- they manipulate the same
+# underlying signals (elapsed silence, location pings) the real state
+# machine reads, then run the real `reevaluate_session()` path, so a demo
+# "missed check-in" still sends a real SMS just like the real thing would.
+
+
+@router.post("/{walk_id}/debug/advance", response_model=WalkStatusOut)
+async def debug_advance(walk_id: str, user_id: str = Depends(get_current_user_id)):
+    db = get_supabase()
+    session = get_owned_session(db, walk_id, user_id)
+    if session["status"] != "active":
+        raise HTTPException(status_code=400, detail="Walk is not active")
+
+    # Rewind far enough that whichever level we're currently at has already
+    # exceeded its threshold -- evaluate_escalation only ever advances one
+    # level per call, so this reliably triggers exactly the next transition.
+    interval = session["check_in_interval_seconds"]
+    rewind_seconds = interval * 3 + GRACE_PERIOD_SECONDS + 60
+    rewound = (utcnow() - timedelta(seconds=rewind_seconds)).isoformat()
+
+    db.table("walk_sessions").update(
+        {"last_response_time": rewound, "last_ping_time": rewound}
+    ).eq("id", walk_id).execute()
+
+    fresh, _ = await reevaluate_session(
+        db, {**session, "last_response_time": rewound, "last_ping_time": rewound}
+    )
+    return _to_status_out(fresh)
+
+
+@router.post("/{walk_id}/debug/stationary", response_model=WalkStatusOut)
+async def debug_set_stationary(
+    walk_id: str, payload: DebugStationaryRequest, user_id: str = Depends(get_current_user_id)
+):
+    db = get_supabase()
+    session = get_owned_session(db, walk_id, user_id)
+    if session["status"] != "active":
+        raise HTTPException(status_code=400, detail="Walk is not active")
+
+    base_lat = session.get("last_known_lat") or 25.758
+    base_lng = session.get("last_known_lng") or -80.3733
+    now = utcnow()
+    # Two pings within STATIONARY_DISTANCE_METERS of each other reads as
+    # stationary; two pings far apart reads as moving -- matches
+    # determine_stationary()'s real distance/window logic exactly.
+    offsets = [(base_lat, base_lng), (base_lat, base_lng)] if payload.stationary else [
+        (base_lat, base_lng),
+        (base_lat + 0.01, base_lng + 0.01),
+    ]
+    for i, (lat, lng) in enumerate(offsets):
+        db.table("location_pings").insert(
+            {
+                "session_id": walk_id,
+                "lat": lat,
+                "lng": lng,
+                "recorded_at": (now - timedelta(seconds=(len(offsets) - i) * 10)).isoformat(),
+            }
+        ).execute()
+
+    fresh, _ = await reevaluate_session(db, session)
+    return _to_status_out(fresh)

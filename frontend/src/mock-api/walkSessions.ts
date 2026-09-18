@@ -1,7 +1,7 @@
 import { ApiError, apiGet, apiPost } from '../lib/apiClient'
 import { supabase } from '../lib/supabaseClient'
 import { store, STORAGE_KEYS } from './client'
-import type { EscalationLevel, WalkSession, WalkStatus } from '../types'
+import type { EscalationLevel, PlannedRoute, WalkSession, WalkStatus } from '../types'
 
 // The real backend's WalkStatusOut/PublicWalkStatusOut (see backend/app/schemas.py).
 // Kept local -- these are wire shapes, not something the rest of the app should
@@ -36,13 +36,15 @@ interface PublicWalkStatusOut {
 }
 
 // The backend has no "list my active walks" endpoint (by design, see
-// BACKEND_INTEGRATION_HANDOFF.md) and WalkStatusOut doesn't echo back the
-// contact ids chosen at start-walk time -- this local cache fills both gaps.
+// BACKEND_INTEGRATION_HANDOFF.md), doesn't echo back the contact ids chosen
+// at start-walk time, and has no concept of a planned route at all -- this
+// local cache fills all three gaps.
 interface StoredMeta {
   walkId: string
   userId: string
   primaryContactId: string
   emergencyContactId: string
+  plannedRoute: PlannedRoute | null
 }
 
 function readMeta(): StoredMeta | null {
@@ -76,6 +78,7 @@ function mapWalkStatus(status: WalkStatusOut, meta: StoredMeta | null): WalkSess
     seconds_until_next_escalation: status.seconds_until_next_escalation,
     alert_summary: status.alert_summary,
     share_url: status.share_url,
+    planned_route: meta?.plannedRoute ?? null,
   }
 }
 
@@ -99,6 +102,7 @@ function mapPublicStatus(shareToken: string, status: PublicWalkStatusOut): WalkS
     status: status.status,
     started_at: new Date(Date.now() - status.minutes_into_walk * 60_000).toISOString(),
     alert_summary: status.alert_summary,
+    planned_route: null,
   }
 }
 
@@ -106,6 +110,7 @@ export async function startWalk(input: {
   primaryContactId: string
   emergencyContactId: string
   checkInIntervalSeconds: number
+  plannedRoute?: PlannedRoute | null
 }): Promise<WalkSession> {
   const status = await apiPost<WalkStatusOut>('/walks/start', {
     primary_contact_id: input.primaryContactId,
@@ -118,6 +123,7 @@ export async function startWalk(input: {
     userId: data.session?.user.id ?? '',
     primaryContactId: input.primaryContactId,
     emergencyContactId: input.emergencyContactId,
+    plannedRoute: input.plannedRoute ?? null,
   }
   writeMeta(meta)
   return mapWalkStatus(status, meta)
@@ -179,3 +185,22 @@ export async function getActiveSessionForUser(): Promise<WalkSession | null> {
     return null
   }
 }
+
+// --- Demo/testing helpers ---------------------------------------------------
+// These call real backend debug endpoints that manipulate the same signals
+// (elapsed silence, location pings) the real escalation state machine reads,
+// then run the real reevaluation -- so a "forced" missed check-in still
+// triggers a real Gemini summary and a real SMS send, same as the real thing.
+
+export async function forceMissedCheckIn(walkId: string): Promise<WalkSession> {
+  const status = await apiPost<WalkStatusOut>(`/walks/${walkId}/debug/advance`)
+  return mapWalkStatus(status, readMeta())
+}
+
+export async function toggleStationary(walkId: string, stationary: boolean): Promise<WalkSession> {
+  const status = await apiPost<WalkStatusOut>(`/walks/${walkId}/debug/stationary`, { stationary })
+  return mapWalkStatus(status, readMeta())
+}
+
+// "Reset" is just a normal check-in -- resets to Level 1 with fresh timestamps.
+export const resetWalk = submitCheckIn

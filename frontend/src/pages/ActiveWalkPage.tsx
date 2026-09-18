@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckInModal } from '../components/CheckInModal'
+import { DemoControls } from '../components/DemoControls'
 import { EscalationBanner } from '../components/EscalationBanner'
 import { ShieldIcon } from '../components/icons'
+import { WalkMap } from '../components/route/WalkMap'
 import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 import { useAuth } from '../context/AuthContext'
@@ -58,7 +60,6 @@ export function ActiveWalkPage() {
   const { session, loading, resolvedAt, submitCheckIn, endWalk, clearEndedWalk } = useWalkSession()
   const { secondsRemaining, isOverdue } = useCheckInTimer(session)
   const navigate = useNavigate()
-  const [linkCopied, setLinkCopied] = useState(false)
   const [emergencyContactCount, setEmergencyContactCount] = useState<number | null>(null)
   const notifiedNames = useNotifiedContactNames(session)
 
@@ -68,14 +69,6 @@ export function ActiveWalkPage() {
       setEmergencyContactCount(list.filter((c) => c.type === 'emergency').length)
     })
   }, [user, session])
-
-  async function handleCopyLink() {
-    if (!session) return
-    const link = session.share_url ?? `${window.location.origin}/contact/${session.session_id}`
-    await navigator.clipboard.writeText(link)
-    setLinkCopied(true)
-    setTimeout(() => setLinkCopied(false), 2000)
-  }
 
   function handleStartNew() {
     clearEndedWalk()
@@ -143,15 +136,17 @@ export function ActiveWalkPage() {
         <p className="text-4xl font-semibold tabular-nums text-navy">{formatSeconds(secondsRemaining)}</p>
       </div>
 
-      <Button variant="secondary" onClick={endWalk}>
-        End walk
-      </Button>
+      <WalkMap route={session.planned_route} currentLat={session.last_known_lat} currentLng={session.last_known_lng} />
 
-      <Button variant="secondary" className="mt-3" onClick={handleCopyLink}>
-        {linkCopied ? 'Link copied!' : 'Copy contact link'}
-      </Button>
+      <Button onClick={endWalk}>End walk</Button>
 
-      <CheckInModal open={isOverdue && session.current_level < 4} onConfirm={submitCheckIn} />
+      <DemoControls />
+
+      <CheckInModal
+        open={isOverdue && session.current_level < 4}
+        level={session.current_level}
+        onConfirm={submitCheckIn}
+      />
     </div>
   )
 }

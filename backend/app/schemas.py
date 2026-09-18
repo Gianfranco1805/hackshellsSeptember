@@ -39,6 +39,10 @@ class LocationUpdate(BaseModel):
     lng: float
 
 
+class DebugStationaryRequest(BaseModel):
+    stationary: bool
+
+
 class WalkStatusOut(BaseModel):
     id: str
     status: WalkStatus

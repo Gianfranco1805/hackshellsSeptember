@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from '../mock-api'
-import type { WalkSession } from '../types'
+import type { PlannedRoute, WalkSession } from '../types'
 import { useAuth } from './AuthContext'
 
 const POLL_INTERVAL_MS = 3000
@@ -10,10 +10,18 @@ interface WalkSessionContextValue {
   session: WalkSession | null
   loading: boolean
   resolvedAt: number | null
-  startWalk: (input: { primaryContactId: string; emergencyContactId: string; checkInIntervalSeconds: number }) => Promise<void>
+  startWalk: (input: {
+    primaryContactId: string
+    emergencyContactId: string
+    checkInIntervalSeconds: number
+    plannedRoute?: PlannedRoute | null
+  }) => Promise<void>
   submitCheckIn: () => Promise<void>
   endWalk: () => Promise<void>
   clearEndedWalk: () => void
+  forceMissedCheckIn: () => Promise<void>
+  toggleStationary: () => Promise<void>
+  resetWalk: () => Promise<void>
 }
 
 const WalkSessionContext = createContext<WalkSessionContextValue | null>(null)
@@ -36,9 +44,15 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
   const pollStatus = useCallback((walkId: string) => {
     clearPoll()
     pollRef.current = window.setInterval(async () => {
-      const updated = await api.walkSessions.getWalkStatus(walkId)
-      setSession(updated)
-      if (updated.status !== 'active') clearPoll()
+      try {
+        const updated = await api.walkSessions.getWalkStatus(walkId)
+        setSession(updated)
+        if (updated.status !== 'active') clearPoll()
+      } catch (err) {
+        // A transient failure shouldn't freeze the interval or the UI --
+        // just skip this tick and try again on the next one.
+        console.error('Failed to poll walk status', err)
+      }
     }, POLL_INTERVAL_MS)
   }, [clearPoll])
 
@@ -93,7 +107,12 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
     }
   }, [user, pollStatus, clearPoll, startLocationReporting, clearLocationReporting])
 
-  async function startWalk(input: { primaryContactId: string; emergencyContactId: string; checkInIntervalSeconds: number }) {
+  async function startWalk(input: {
+    primaryContactId: string
+    emergencyContactId: string
+    checkInIntervalSeconds: number
+    plannedRoute?: PlannedRoute | null
+  }) {
     if (!user) return
     const created = await api.walkSessions.startWalk(input)
     setSession(created)
@@ -122,6 +141,21 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
     setResolvedAt(null)
   }
 
+  async function forceMissedCheckIn() {
+    if (!session) return
+    setSession(await api.walkSessions.forceMissedCheckIn(session.session_id))
+  }
+
+  async function toggleStationary() {
+    if (!session) return
+    setSession(await api.walkSessions.toggleStationary(session.session_id, !session.is_stationary))
+  }
+
+  async function resetWalk() {
+    if (!session) return
+    setSession(await api.walkSessions.resetWalk(session.session_id))
+  }
+
   return (
     <WalkSessionContext.Provider
       value={{
@@ -132,6 +166,9 @@ export function WalkSessionProvider({ children }: { children: ReactNode }) {
         submitCheckIn,
         endWalk,
         clearEndedWalk,
+        forceMissedCheckIn,
+        toggleStationary,
+        resetWalk,
       }}
     >
       {children}

@@ -13,6 +13,20 @@ export type EscalationLevel = 1 | 2 | 3 | 4
 
 export type WalkStatus = 'active' | 'resolved' | 'escalated'
 
+export interface RoutePoint {
+  label: string
+  lat: number
+  lng: number
+}
+
+export interface PlannedRoute {
+  start_point: RoutePoint
+  end_point: RoutePoint
+  polyline: [number, number][] // [lat, lng], ordered start -> end
+  distance_meters: number
+  duration_seconds: number
+}
+
 export interface WalkSession {
   session_id: string
   user_id: string
@@ -31,6 +45,10 @@ export interface WalkSession {
   seconds_until_next_escalation?: number | null
   alert_summary?: string | null
   share_url?: string | null
+  // Frontend-only: the backend has no concept of a planned route, so this is
+  // cached locally alongside the contact ids (see mock-api/walkSessions.ts)
+  // purely for the map display -- real GPS still drives actual position.
+  planned_route: PlannedRoute | null
 }
 
 export interface AppUser {

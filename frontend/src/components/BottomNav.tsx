@@ -10,7 +10,7 @@ const TABS = [
 export function BottomNav() {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 flex items-center justify-around border-t border-slate-200 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2"
+      className="fixed inset-x-0 bottom-0 z-[2000] flex items-center justify-around border-t border-slate-200 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2"
       aria-label="Primary"
     >
       {TABS.map(({ to, label, Icon }) => (
