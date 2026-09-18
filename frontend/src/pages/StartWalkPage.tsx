@@ -10,9 +10,9 @@ import { useWalkSession } from '../context/WalkSessionContext'
 import { api } from '../mock-api'
 import type { Contact, PlannedRoute } from '../types'
 
-// Backend enforces check_in_interval_seconds > 30 (see WalkStartRequest in
+// Backend enforces check_in_interval_seconds >= 10 (see WalkStartRequest in
 // backend/app/schemas.py).
-const MIN_INTERVAL_SECONDS = 31
+const MIN_INTERVAL_SECONDS = 10
 
 type IntervalUnit = 'seconds' | 'minutes'
 
