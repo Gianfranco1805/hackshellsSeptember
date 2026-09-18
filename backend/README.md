@@ -30,11 +30,13 @@ Health check: `GET http://localhost:8000/health`
 
 The frontend authenticates directly against Supabase Auth (sign up / log in)
 and gets back a JWT. It sends that JWT as `Authorization: Bearer <token>` on
-every request to this API. The backend verifies it locally against
-`SUPABASE_JWT_SECRET` (`app/dependencies.py`) — no per-request round trip to
-Supabase. All DB access from the backend uses the service-role key, so the
-backend is the single source of truth for authorization (see comments in
-`app/db.py` and `supabase/schema.sql`).
+every request to this API. The backend verifies it against Supabase's public
+JWKS endpoint (`{SUPABASE_URL}/auth/v1/.well-known/jwks.json`, cached client in
+`app/dependencies.py`) — no shared secret required, and it works whether the
+project signs tokens with the legacy HS256 shared secret or the newer
+asymmetric ES256/RS256 signing keys. All DB access from the backend uses the
+service-role key, so the backend is the single source of truth for
+authorization (see comments in `app/db.py` and `supabase/schema.sql`).
 
 ## How escalation actually runs
 

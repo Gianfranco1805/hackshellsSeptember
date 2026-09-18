@@ -8,7 +8,6 @@ load_dotenv()
 class Settings:
     supabase_url: str = os.getenv("SUPABASE_URL", "")
     supabase_service_key: str = os.getenv("SUPABASE_SERVICE_KEY", "")
-    supabase_jwt_secret: str = os.getenv("SUPABASE_JWT_SECRET", "")
 
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
