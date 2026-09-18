@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { BottomNav } from '../components/BottomNav'
 import { ProtectedRoute } from '../components/ProtectedRoute'
+import { TopBar } from '../components/TopBar'
 import { ActiveWalkPage } from '../pages/ActiveWalkPage'
 import { ContactViewPage } from '../pages/ContactViewPage'
 import { ContactsPage } from '../pages/ContactsPage'
@@ -11,10 +12,11 @@ import { StartWalkPage } from '../pages/StartWalkPage'
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <div className="min-h-svh bg-app-bg">
+      <TopBar />
       {children}
       <BottomNav />
-    </>
+    </div>
   )
 }
 

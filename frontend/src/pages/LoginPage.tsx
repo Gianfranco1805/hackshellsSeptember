@@ -27,7 +27,14 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto flex min-h-svh max-w-md flex-col justify-center px-6">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Log in</h1>
+      <div className="mb-8 text-center">
+        <p className="text-2xl font-extrabold tracking-tight">
+          <span className="text-gold">Pawlina</span>
+          <span className="text-navy">Walk</span>
+        </p>
+        <p className="mt-2 text-sm text-slate-600">Check-in safety for your walk home.</p>
+      </div>
+      <h1 className="mb-6 text-2xl font-semibold text-navy">Log in</h1>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <TextInput label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         <TextInput
@@ -45,7 +52,7 @@ export function LoginPage() {
       </form>
       <p className="mt-4 text-center text-sm text-slate-600">
         Don't have an account?{' '}
-        <Link to="/signup" className="font-medium text-violet-600">
+        <Link to="/signup" className="font-medium text-gold">
           Sign up
         </Link>
       </p>

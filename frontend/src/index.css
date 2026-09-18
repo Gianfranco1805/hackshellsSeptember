@@ -8,3 +8,7 @@
   --color-app-bg: #f2f2f7;
   --font-sans: 'Poppins', sans-serif;
 }
+
+body {
+  background-color: var(--color-app-bg);
+}
