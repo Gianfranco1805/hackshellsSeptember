@@ -1,10 +1,38 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ContactCard } from '../components/ContactCard'
 import { ContactForm } from '../components/ContactForm'
+import { AlertIcon, ContactsIcon } from '../components/icons'
 import { Spinner } from '../components/ui/Spinner'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../mock-api'
 import type { Contact, ContactType } from '../types'
+
+function SectionHeader({ icon, tone, title, subtitle }: { icon: ReactNode; tone: 'navy' | 'gold'; title: string; subtitle: string }) {
+  return (
+    <div className="mb-3 flex items-center gap-3">
+      <div
+        className={`flex h-9 w-9 flex-none items-center justify-center rounded-full ${
+          tone === 'navy' ? 'bg-navy/10 text-navy' : 'bg-gold/15 text-gold'
+        }`}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <h2 className="text-base font-semibold text-navy">{title}</h2>
+        <p className="truncate text-xs text-slate-500">{subtitle}</p>
+      </div>
+    </div>
+  )
+}
+
+function EmptyState({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">{icon}</div>
+      <p className="text-sm text-slate-500">{text}</p>
+    </div>
+  )
+}
 
 export function ContactsPage() {
   const { user } = useAuth()
@@ -48,12 +76,18 @@ export function ContactsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pb-24 pt-6">
-      <h1 className="mb-6 text-2xl font-semibold text-navy">Contacts</h1>
+      <h1 className="mb-1 text-2xl font-semibold text-navy">Contacts</h1>
+      <p className="mb-6 text-sm text-slate-500">Who we reach out to if a walk doesn't go as planned.</p>
 
       <section className="mb-8">
-        <h2 className="mb-3 text-lg font-medium text-navy">Primary contact</h2>
+        <SectionHeader
+          icon={<ContactsIcon className="h-4 w-4" />}
+          tone="navy"
+          title="Primary contact"
+          subtitle="Notified first when you miss a check-in."
+        />
         <div className="mb-4 flex flex-col gap-3">
-          {primary.length === 0 && <p className="text-sm text-slate-500">No primary contact saved yet.</p>}
+          {primary.length === 0 && <EmptyState icon={<ContactsIcon className="h-5 w-5" />} text="No primary contact saved yet." />}
           {primary.map((c) => (
             <ContactCard key={c.id} contact={c} onUpdate={handleUpdate} onDelete={handleDelete} />
           ))}
@@ -62,9 +96,14 @@ export function ContactsPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-medium text-navy">Emergency contact</h2>
+        <SectionHeader
+          icon={<AlertIcon className="h-4 w-4" />}
+          tone="gold"
+          title="Emergency contact"
+          subtitle="Notified if you still haven't responded."
+        />
         <div className="mb-4 flex flex-col gap-3">
-          {emergency.length === 0 && <p className="text-sm text-slate-500">No emergency contact saved yet.</p>}
+          {emergency.length === 0 && <EmptyState icon={<AlertIcon className="h-5 w-5" />} text="No emergency contact saved yet." />}
           {emergency.map((c) => (
             <ContactCard key={c.id} contact={c} onUpdate={handleUpdate} onDelete={handleDelete} />
           ))}

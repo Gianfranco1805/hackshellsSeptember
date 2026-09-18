@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { isValidPhone } from '../lib/format'
+import { initials, isValidPhone } from '../lib/format'
 import type { Contact } from '../types'
 import { Button } from './ui/Button'
 import { Card } from './ui/Card'
@@ -9,15 +9,6 @@ interface ContactCardProps {
   contact: Contact
   onUpdate: (id: string, updates: { name: string; phone: string }) => Promise<void>
   onDelete: (id: string) => Promise<void>
-}
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('')
 }
 
 export function ContactCard({ contact, onUpdate, onDelete }: ContactCardProps) {
